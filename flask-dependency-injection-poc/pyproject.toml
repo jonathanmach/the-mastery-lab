@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "flask-dependency-injection-poc"
+version = "0.1.0"
+description = "Experimenting with dependency injection and Flask"
+authors = ["Jonathan <jonathanfmach@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^3.1.0"
+flask-pydantic = "^0.12.0"
+flask-injector = {path = "libs/flask_injector", develop = true}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
