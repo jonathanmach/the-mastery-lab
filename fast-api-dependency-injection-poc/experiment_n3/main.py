@@ -3,8 +3,9 @@ Experiment #3: Expands on the previous experiment by making the DB dependency re
 
 Results:
 ✅  Introduced new dependency: `logger`
-[ ]  The `db_service` dependency is request-bound
+[✅]  The `db_service` dependency is request-bound
     [ ] issues figuring out how to access the overridden dependency directly in the tests
+     - ended up using a global variable to test that the dependency is request-bound
 --
 
 Experiment #2: Services request-bound: Stop fighting the "get_dependency" approach and
