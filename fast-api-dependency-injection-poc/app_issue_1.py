@@ -41,9 +41,9 @@ products_api = APIRouter()
 
 
 @products_api.get("/products")
-# I want to explicitly leave `Depends()` empty instead of tight-coupling it to a implementation. 
-def list_products(product_service: ProductService = Depends()): 
-    # 
+# Trying to explicitly leave `Depends()` empty instead of having to tight-couple it to a implementation.
+def list_products(product_service: ProductService = Depends()):
+    #
     return product_service.get_products()
 
 
