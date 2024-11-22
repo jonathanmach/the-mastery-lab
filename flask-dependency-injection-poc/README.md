@@ -1,4 +1,7 @@
 
+# Goals
+Experiment with alternative approaches to inject dependencies in a Flask application.
+
 
 
 
