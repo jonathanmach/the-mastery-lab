@@ -1,6 +1,6 @@
 # The Mastery Lab
 
-A space for experimentation and growth 🚀
+A space for experimentation and learning 🚀
 
 ## Experiments
 
