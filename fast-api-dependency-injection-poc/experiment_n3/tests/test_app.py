@@ -1,5 +1,8 @@
+from fastapi import Depends
 from fastapi.testclient import TestClient
 from pytest import fixture
+
+from services import ProductService
 
 from .. import di
 from ..main import app
@@ -61,3 +64,21 @@ def test_list_products(test_app):
         {"name": "Product Test1", "quantity": 10},
         {"name": "Product Test2", "quantity": 20},
     ]
+
+
+# ✅ Experiment #4: Ability to override top-level dependencies
+class TestProductService(ProductService):
+    def get_products(self):
+        return [{"name": "Overridden Product", "quantity": 100}]
+
+
+def get_fake_product_service(db=Depends(di.db_service)):
+    return TestProductService(db=db)
+
+
+def test_override_ProductService(test_app):
+    app.dependency_overrides[di.products_service] = get_fake_product_service
+
+    response = test_app.get("/products")
+    assert response.status_code == 200
+    assert response.json() == [{"name": "Overridden Product", "quantity": 100}]
