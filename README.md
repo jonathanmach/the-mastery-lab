@@ -4,7 +4,7 @@ A space for experimentation and learning 🚀
 
 ## Experiments
 
-- [Websocket: FastAPI backend](websocket-fastapi-poc/README.md): Experimenting with Websockets in FastAPI and async programming. ![Custom Badge](https://img.shields.io/badge/Outcome-Success-brightgreen)
+- [Websocket: FastAPI backend](websocket-fastapi-poc/README.md): Experimenting with Websockets with FastAPI and async programming. ![Custom Badge](https://img.shields.io/badge/Outcome-Success-brightgreen)
 
 - [FastAPI dependency injection](fast-api-dependency-injection-poc/README.md): Exploring dependency injection in FastAPI: clean setups, nested dependencies, dev experience, and pitfalls . ![Custom Badge](https://img.shields.io/badge/Outcome-Success-brightgreen)
 
