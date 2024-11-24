@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "websocket-fastapi-poc"
+version = "0.1.0"
+description = ""
+package-mode = false
+readme = "README.md"
+
+[tool.black]
+line-length = 120
+
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = {extras = ["standard"], version = "^0.115.5"}
+pytest = "^8.3.3"
+websockets = "^14.1"
+pytest-asyncio = "^0.24.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
