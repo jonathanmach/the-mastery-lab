@@ -4,6 +4,9 @@ A space for experimentation and learning 🚀
 
 ## Experiments
 
+- [Foundations of enterprise software development (Course)](fakeflix-foundations-of-enterprise-software-development/README.md): Building scalable software architectures with a focus on modularity and enterprise patterns. . ![Custom Badge](https://img.shields.io/badge/Status-In_Progress-blue)
+
+
 - [Websocket: FastAPI backend](websocket-fastapi-poc/README.md): Experimenting with Websockets with FastAPI and async programming. ![Custom Badge](https://img.shields.io/badge/Outcome-Success-brightgreen)
 
 - [FastAPI dependency injection](fast-api-dependency-injection-poc/README.md): Exploring dependency injection in FastAPI: clean setups, nested dependencies, dev experience, and pitfalls . ![Custom Badge](https://img.shields.io/badge/Outcome-Success-brightgreen)
