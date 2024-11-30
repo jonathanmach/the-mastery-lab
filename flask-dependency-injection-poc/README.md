@@ -5,7 +5,12 @@ Experiment with alternative approaches to inject dependencies in a Flask applica
 
 
 
-## Journal log
+## Experimentation log
+#### `@2024-11-19`: Experiment #3: Try FastDepends lib
+Made good progress trying to inject depedencies, as well as validating requests with Pydantic. 
+Currently facing problems with dependency overriding.
+See [app_3_fastdepends.py](./app_3_fastdepends.py).
+
 #### `2024-11-19`  Challenge #2: Flask-Pydantic conflict with Flask-Injector
 Problem: Flask-Pydantic tries to validate the type of injected dependecy.
 ...
