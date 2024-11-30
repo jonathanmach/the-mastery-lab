@@ -19,7 +19,8 @@
             "extensions":[
 				"ms-python.python",
 				"njpwerner.autodocstring",
-				"rangav.vscode-thunder-client"
+				"rangav.vscode-thunder-client",
+				"charliermarsh.ruff"
 			]
             }
         }

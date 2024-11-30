@@ -1,3 +1,5 @@
+Next: Finish https://youtu.be/pMuiVlnGqjk?si=Ln2pIQrJbLTXB_VX&t=723
+
 # Foundations of enterprise software development
 
 This course covers building scalable software architectures with a focus on modularity and enterprise patterns. Starting with a streaming MVP, it explores evolutionary design, coupling, module communication (synchronous and asynchronous), and deployment strategies. Practical and theory-driven, it equips developers to create robust, adaptable systems.
@@ -12,8 +14,10 @@ This course covers building scalable software architectures with a focus on modu
 7.	Principles of Modular Architecture
 8.	Coupling and Synchronous Communication Between Modules
 9.	Asynchronous Communication Between Modules
-10.	Deploying Modular Architectures
+10. Deploying Modular Architectures
 
+
+# Intro
 ## Docker
 
 ### Docker Volumes
@@ -108,3 +112,16 @@ Datasource "db": PostgreSQL database "fakeflix", schema "public" at "localhost:5
 
 ✔ Generated Prisma Client (v6.0.0) to ./node_modules/@prisma/client in 31ms
 ```
+
+## Others
+### Video streaming fundamentals
+
+**Notes**
+* Chunks
+* HTTP 206 Partial Content
+* [How to handle Partial Content in Node.js](https://medium.com/@vishal1909/how-to-handle-partial-content-in-node-js-8b0a5aea216)
+
+# Enterprise Development Patterns
+
+[What is DDD - Eric Evans - DDD Europe 2019](https://youtu.be/pMuiVlnGqjk?si=j3TyfWpb6iJsupq6)
+
