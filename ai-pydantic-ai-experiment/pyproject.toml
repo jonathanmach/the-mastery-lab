@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "ai-pydantic-ai-experiment"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+line-length = 140
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic-ai = "^0.0.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
