@@ -1,0 +1,7 @@
+{
+  "name": "vue-electron-capacitor-experiment",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}
