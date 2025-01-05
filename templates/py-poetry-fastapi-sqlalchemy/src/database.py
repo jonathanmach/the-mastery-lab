@@ -11,9 +11,7 @@ Base = declarative_base()
 
 
 class BaseModel(Base):
-    __abstract__ = (
-        True  # Mark this model as abstract (won't create a table for this class)
-    )
+    __abstract__ = True  # Mark this model as abstract (won't create a table for this class)
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
