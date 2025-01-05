@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterView } from 'vue-router'
 import HelloWorld from './components/HelloWorld.vue'
+
+import { Editor, EditorContent } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+
+const editor = new Editor({
+  content: '<p>Example Text</p>',
+  extensions: [StarterKit],
+})
 </script>
 
 <template>
@@ -10,10 +18,8 @@ import HelloWorld from './components/HelloWorld.vue'
     <div class="wrapper">
       <HelloWorld msg="You did it!" />
 
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
+      <!-- Editor -->
+      <EditorContent :editor="editor" class="rich-text-editor" />
     </div>
   </header>
 
@@ -21,6 +27,12 @@ import HelloWorld from './components/HelloWorld.vue'
 </template>
 
 <style scoped>
+.rich-text-editor {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+}
+
 header {
   line-height: 1.5;
   max-height: 100vh;
