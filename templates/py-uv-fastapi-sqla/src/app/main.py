@@ -13,8 +13,6 @@ async def root():
 
 
 @app.get("/users/{user_id}")
-async def get_user(
-    user_id: str, user_service: UserService = Depends(get_user_service)
-) -> User:
+async def get_user(user_id: str, user_service: UserService = Depends(get_user_service)) -> User:
     user = user_service.get_user(user_id)
     return user
