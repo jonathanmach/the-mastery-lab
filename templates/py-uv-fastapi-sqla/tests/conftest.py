@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 def settings() -> Settings:
     return Settings(
         database=DatabaseSettings(
-            sqlalchemy_database_uri="sqlite:///./test.db",
+            connection_string="sqlite:///./test.db",
             connect_args={"check_same_thread": False},
         ),
     )
