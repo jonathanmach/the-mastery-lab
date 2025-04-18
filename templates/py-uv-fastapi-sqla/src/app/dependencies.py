@@ -1,20 +1,14 @@
 from typing import Annotated
 
 from fastapi import Depends
-from app.config import DatabaseSettings, Settings
+from app.config import Settings
 from app.db.session import get_engine, get_session
 from app.services import UserService
 from sqlalchemy.orm import Session
 
 
 def get_config() -> Settings:
-    # TODO: Implement a function to load configuration from environment variables or a config file
-    return Settings(
-        database=DatabaseSettings(
-            sqlalchemy_database_uri="sqlite:///./app.db",
-            connect_args={"check_same_thread": False},
-        ),
-    )
+    return Settings()  # type: ignore # Loaded from .env file
 
 
 def get_db_session(config: Annotated[Settings, Depends(get_config)]) -> Session:
