@@ -1,0 +1,26 @@
+[project]
+name = "py-uv-fastapi-sqla"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Jonathan", email = "jonathanfmach@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115.12",
+    "sqlalchemy>=2.0.40",
+]
+
+# [project.scripts]
+# dev = "py_uv_fastapi_sqla:main:app --reload"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
