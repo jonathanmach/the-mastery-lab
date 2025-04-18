@@ -18,39 +18,7 @@ This course covers building scalable software architectures with a focus on modu
 ## Introduction
 
 ### Docker
-
-### Docker Volumes
-
-There's 3 types of volumes in Docker:
-
-1. **Named Volumes**: These are volumes that are created and managed by Docker and is not tied to any specific directory on the host machine unless explicitly configured. By default, Docker stores named volumes in a location managed by Docker itself.
-
-```yaml
-services:
-  my-service:
-    volumes:
-      - my-volume:/path/in/container
-volumes:
-  my-volume:
-```
-
-2. **Bind Mounts**: These are volumes that are created and managed by the user. They are stored in a directory on the host machine.
-
-```yaml
-services:
-  my-service:
-    volumes:
-      - /path/in/host:/path/in/container # ex: .data:/var/lib/postgresql/data
-```
-
-3. **Anonymous Volumes**: These are volumes that are created and managed by Docker. They are stored in a directory on the host machine.
-
-```yaml
-services:
-  my-service:
-    volumes:
-      - /path/in/container
-```
+See: [[Docker 101]]
 
 ### Nest.js
 
@@ -78,7 +46,7 @@ UPDATE src/app.module.ts (312 bytes)
 ✔ Packages installed successfully.
 ```
 
-### Prima ORM
+### Prisma ORM
 
 [Set up Prisma ORM](https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project/relational-databases-typescript-postgresql)
 
