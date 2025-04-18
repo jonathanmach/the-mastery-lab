@@ -1,4 +1,14 @@
 
+### Basic commands
+
+**Build and Run the Containers**
+```bash
+ docker-compose up -d
+```
+- `-d` runs it in detached mode (in the background).
+- It will automatically use variables from `.env`.
+
+
 ### Docker Volumes
 
 There's 3 types of volumes in Docker:
@@ -32,7 +42,7 @@ services:
       - /path/in/container
 ```
 
-## Environment variables
+### Environment variables
 To make your **Docker Compose** setup use environment variables from a .env file, just follow these steps:
 
 1. Create a .env file in the same directory as docker-compose.yml:

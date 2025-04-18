@@ -7,7 +7,7 @@ from app.config import DatabaseSettings
 
 def get_engine(db_settings: DatabaseSettings) -> Engine:
     return create_engine(
-        db_settings.sqlalchemy_database_uri,
+        db_settings.connection_string,
         connect_args=db_settings.connect_args,
     )
 
