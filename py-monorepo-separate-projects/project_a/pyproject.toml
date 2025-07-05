@@ -1,0 +1,16 @@
+[project]
+name = "project-a"
+version = "0.1.0"
+description = "Add your description here"
+
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115.14",
+]
+
+[project.scripts]
+project-a = "project_a:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
