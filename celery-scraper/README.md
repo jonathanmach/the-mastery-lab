@@ -85,6 +85,15 @@ curl http://localhost:8000/api/results/latest
 curl http://localhost:8000/api/results
 ```
 
+# Notes
+
+* Pylance error `Cannot access attribute "delay" for class "FunctionType"`
+  Solution: ?
+
+* `@shared_task` vs `@app.task` decorators
+  Solution: `@shared_task` allows tasks to be defined without direct access to the Celery app instance (loose coupling). While `@app.task` requires one to import the Celery app to register the task.
+
+
 ## API Endpoints
 
 | Method | Path | Description |

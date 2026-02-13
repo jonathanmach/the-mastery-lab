@@ -11,13 +11,13 @@ CELERY CONCEPTS DEMONSTRATED:
 
 from celery import chord
 
-from app.celery_app import celery
+from celery import shared_task
 from app.tasks.fetch import fetch_top_stories, fetch_story_details
 from app.tasks.process import process_stories
 from app.tasks.store import store_results
 
 
-@celery.task(name="app.tasks.pipelines.run_scrape_pipeline")
+@shared_task
 def run_scrape_pipeline(limit: int = 20, min_score: int = 10) -> str:
     """
     Orchestrate a full scrape pipeline and return the chord's AsyncResult ID.
@@ -54,7 +54,7 @@ def run_scrape_pipeline(limit: int = 20, min_score: int = 10) -> str:
     return result.id
 
 
-@celery.task(name="app.tasks.pipelines.periodic_pipeline")
+@shared_task
 def periodic_pipeline() -> str:
     """
     Entry point for Celery Beat.
