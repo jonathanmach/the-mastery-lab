@@ -1,0 +1,19 @@
+replication:
+  connections:
+    - type: postgresql
+      uri: postgresql://postgres:postgres@pg-db:5432/powersync_todo
+      sslmode: disable
+
+storage:
+  type: postgresql
+  uri: postgresql://postgres:postgres@pg-db:5432/powersync_todo
+  sslmode: disable
+
+port: 8080
+
+sync_rules:
+  path: sync_rules.yaml
+
+client_auth:
+  jwks_uri: http://backend:6060/api/auth/keys
+  audience: ["powersync-dev"]

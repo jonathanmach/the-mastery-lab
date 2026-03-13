@@ -1,0 +1,53 @@
+services:
+  pg-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: powersync_todo
+    ports:
+      - "5433:5432"
+    command: ["postgres", "-c", "wal_level=logical"]
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  powersync:
+    image: journeyapps/powersync-service:latest
+    restart: unless-stopped
+    ports:
+      - "8180:8080"
+    depends_on:
+      pg-db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - ./config:/config
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/powersync.yaml
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/probes/liveness')"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - "6060:6060"
+    depends_on:
+      pg-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@pg-db:5432/powersync_todo
+
+volumes:
+  pg_data:
