@@ -1,0 +1,18 @@
+[project]
+name = "pydantic-headless-cms"
+version = "0.1.0"
+description = "Pydantic-powered headless CMS prototype"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
