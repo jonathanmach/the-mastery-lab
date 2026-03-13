@@ -34,7 +34,7 @@ app = FastAPI(title="Pydantic CMS")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -162,5 +162,27 @@ def update_entry(id: str, payload: EntryPayload) -> ContentEntry:
 def delete_entry(id: str) -> None:
     try:
         cms.delete_content(id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Public API (read-only)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/public/content-types/{type_id}/entries", response_model=list[ContentEntry])
+def public_list_entries(type_id: str) -> list[ContentEntry]:
+    try:
+        cms.get_content_type(type_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return cms.list_content(type_id)
+
+
+@app.get("/public/entries/{id}", response_model=ContentEntry)
+def public_get_entry(id: str) -> ContentEntry:
+    try:
+        return cms.get_content(id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
