@@ -8,6 +8,7 @@ from .repository import (
     InMemoryContentRepository,
     InMemoryContentTypeRepository,
 )
+from .storage import LocalObjectStorage, ObjectStorage
 
 __all__ = [
     "CMS",
@@ -21,4 +22,6 @@ __all__ = [
     "InMemoryContentRepository",
     "SQLiteContentTypeRepository",
     "SQLiteContentRepository",
+    "ObjectStorage",
+    "LocalObjectStorage",
 ]

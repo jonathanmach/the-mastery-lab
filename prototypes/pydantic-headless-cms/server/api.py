@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import sqlite3
+import uuid
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 
-from pydantic_cms import CMS, ContentEntry, ContentTypeSchema
+from pydantic_cms import CMS, ContentEntry, ContentTypeSchema, LocalObjectStorage, ObjectStorage
 from pydantic_cms.sqlite import (
     SQLiteContentRepository,
     SQLiteContentTypeRepository,
@@ -15,15 +18,17 @@ from pydantic_cms.sqlite import (
 )
 
 # ---------------------------------------------------------------------------
-# App-level CMS singleton (acceptable for prototype)
+# App-level singletons (acceptable for prototype)
 # ---------------------------------------------------------------------------
 
-conn = sqlite3.connect("cms.db", check_same_thread=False)
+Path(".storage").mkdir(exist_ok=True)
+conn = sqlite3.connect(".storage/cms.db", check_same_thread=False)
 create_schema(conn)
 cms = CMS(
     content_type_repo=SQLiteContentTypeRepository(conn),
     content_repo=SQLiteContentRepository(conn),
 )
+storage: ObjectStorage = LocalObjectStorage()
 
 app = FastAPI(title="Pydantic CMS")
 
@@ -34,6 +39,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/media", StaticFiles(directory=".storage/uploads", html=False), name="media")
+
 # ---------------------------------------------------------------------------
 # Request bodies
 # ---------------------------------------------------------------------------
@@ -41,6 +48,19 @@ app.add_middleware(
 
 class EntryPayload(BaseModel):
     data: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Object Storage
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile) -> dict[str, str]:
+    suffix = Path(file.filename or "file").suffix
+    key = f"{uuid.uuid4()}{suffix}"
+    url = storage.upload(key, await file.read(), file.content_type or "application/octet-stream")
+    return {"key": key, "url": url}
 
 
 # ---------------------------------------------------------------------------

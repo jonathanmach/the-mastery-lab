@@ -76,6 +76,18 @@ export const deleteContentType = (id: string) =>
   request<void>(`/content-types/${id}`, { method: 'DELETE' })
 
 // ---------------------------------------------------------------------------
+// Object Storage
+// ---------------------------------------------------------------------------
+
+export const uploadFile = async (file: File): Promise<{ key: string; url: string }> => {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(`${BASE}/upload`, { method: 'POST', body: fd })
+  if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`)
+  return res.json()
+}
+
+// ---------------------------------------------------------------------------
 // Content Entries
 // ---------------------------------------------------------------------------
 

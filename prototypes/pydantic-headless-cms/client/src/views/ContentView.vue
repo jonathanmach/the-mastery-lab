@@ -7,10 +7,10 @@ import {
   createEntry,
   updateEntry,
   deleteEntry,
+  uploadFile,
   type ContentTypeSchema,
   type ContentEntry,
   type FieldDefinition,
-  type FieldType,
 } from '../api/client'
 
 const entries = ref<ContentEntry[]>([])
@@ -22,6 +22,7 @@ const showForm = ref(false)
 const editingId = ref<string | null>(null)
 const selectedTypeId = ref('')
 const formData = ref<Record<string, unknown>>({})
+const uploading = ref<Record<string, boolean>>({})
 
 async function load() {
   error.value = ''
@@ -30,7 +31,6 @@ async function load() {
       getAllEntries(),
       getContentTypes(),
     ])
-    // Populate schema cache
     for (const ct of contentTypes.value) {
       schemaCache.value[ct.id] = ct
     }
@@ -98,13 +98,27 @@ function cancel() {
   error.value = ''
 }
 
+async function onImageChange(fieldName: string, e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  uploading.value[fieldName] = true
+  try {
+    const { url } = await uploadFile(file)
+    formData.value[fieldName] = url
+  } catch (err) {
+    error.value = String(err)
+  } finally {
+    uploading.value[fieldName] = false
+  }
+}
+
 function coerce(field: FieldDefinition, raw: unknown): unknown {
   const s = String(raw ?? '')
   if (field.type === 'boolean') return raw === true || raw === 'true'
   if (field.type === 'integer') return s === '' ? null : parseInt(s, 10)
   if (field.type === 'number') return s === '' ? null : parseFloat(s)
   if (field.type === 'list') return s.split(',').map((x) => x.trim()).filter(Boolean)
-  return s === '' ? null : s
+  return s === '' ? null : s  // covers text, rich_text, image (URL string), date, datetime
 }
 
 async function submit() {
@@ -137,6 +151,11 @@ async function remove(id: string) {
   } catch (e) {
     error.value = String(e)
   }
+}
+
+function isImageField(entry: ContentEntry, key: string): boolean {
+  const schema = schemaCache.value[entry.content_type_id]
+  return schema?.fields.find((f) => f.name === key)?.type === 'image'
 }
 
 const activeSchema = computed(() => schemaCache.value[selectedTypeId.value] ?? null)
@@ -172,7 +191,10 @@ const activeSchema = computed(() => schemaCache.value[selectedTypeId.value] ?? n
           <td>
             <span v-for="(val, key) in entry.data" :key="key" style="margin-right:12px;">
               <span style="color:#888;font-size:12px;">{{ key }}:</span>
-              <template v-if="Array.isArray(val)">
+              <template v-if="isImageField(entry, String(key))">
+                <img :src="String(val)" style="height:36px;width:36px;object-fit:cover;border-radius:3px;vertical-align:middle;" />
+              </template>
+              <template v-else-if="Array.isArray(val)">
                 <span v-for="(item, i) in val" :key="i" class="tag">{{ item }}</span>
               </template>
               <template v-else>{{ val }}</template>
@@ -207,7 +229,22 @@ const activeSchema = computed(() => schemaCache.value[selectedTypeId.value] ?? n
             <span v-if="field.type === 'list'" style="font-weight:normal;color:#888"> — comma-separated</span>
           </label>
 
-          <div v-if="field.type === 'boolean'" style="margin-bottom:12px;">
+          <!-- image -->
+          <div v-if="field.type === 'image'" style="margin-bottom:12px;">
+            <input
+              type="file"
+              accept="image/*"
+              style="margin-bottom:6px"
+              @change="onImageChange(field.name, $event)"
+            />
+            <span v-if="uploading[field.name]" style="font-size:12px;color:#888;"> Uploading…</span>
+            <div v-if="formData[field.name]" style="margin-top:6px;">
+              <img :src="String(formData[field.name])" style="max-height:120px;border-radius:4px;" />
+            </div>
+          </div>
+
+          <!-- boolean -->
+          <div v-else-if="field.type === 'boolean'" style="margin-bottom:12px;">
             <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
               <input
                 type="checkbox"
@@ -247,7 +284,9 @@ const activeSchema = computed(() => schemaCache.value[selectedTypeId.value] ?? n
       </template>
 
       <div style="display:flex;gap:8px;margin-top:4px;">
-        <button class="btn-primary" @click="submit">Save</button>
+        <button class="btn-primary" :disabled="Object.values(uploading).some(Boolean)" @click="submit">
+          Save
+        </button>
         <button class="btn-secondary" @click="cancel">Cancel</button>
       </div>
     </div>

@@ -16,8 +16,84 @@ const showForm = ref(false)
 const editingId = ref<string | null>(null)
 
 const FIELD_TYPES: FieldType[] = [
-  'text', 'rich_text', 'number', 'integer', 'boolean', 'date', 'datetime', 'list',
+  'text', 'rich_text', 'number', 'integer', 'boolean', 'date', 'datetime', 'list', 'image',
 ]
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+interface Template {
+  label: string
+  description: string
+  schema: ContentTypeSchema
+}
+
+const TEMPLATES: Template[] = [
+  {
+    label: 'Blog Post',
+    description: 'Title, body, author, tags, cover image',
+    schema: {
+      id: 'blog-post',
+      name: 'Blog Post',
+      fields: [
+        { name: 'title', type: 'text', required: true, item_type: null },
+        { name: 'body', type: 'rich_text', required: true, item_type: null },
+        { name: 'author', type: 'text', required: true, item_type: null },
+        { name: 'published_at', type: 'date', required: false, item_type: null },
+        { name: 'tags', type: 'list', required: false, item_type: 'text' },
+        { name: 'cover_image', type: 'image', required: false, item_type: null },
+      ],
+    },
+  },
+  {
+    label: 'Product',
+    description: 'Name, description, price, SKU, image',
+    schema: {
+      id: 'product',
+      name: 'Product',
+      fields: [
+        { name: 'name', type: 'text', required: true, item_type: null },
+        { name: 'description', type: 'rich_text', required: false, item_type: null },
+        { name: 'price', type: 'number', required: true, item_type: null },
+        { name: 'sku', type: 'text', required: false, item_type: null },
+        { name: 'in_stock', type: 'boolean', required: true, item_type: null },
+        { name: 'image', type: 'image', required: false, item_type: null },
+      ],
+    },
+  },
+  {
+    label: 'Team Member',
+    description: 'Name, role, bio, photo',
+    schema: {
+      id: 'team-member',
+      name: 'Team Member',
+      fields: [
+        { name: 'name', type: 'text', required: true, item_type: null },
+        { name: 'role', type: 'text', required: true, item_type: null },
+        { name: 'bio', type: 'rich_text', required: false, item_type: null },
+        { name: 'photo', type: 'image', required: false, item_type: null },
+      ],
+    },
+  },
+  {
+    label: 'Event',
+    description: 'Title, description, start date, location, image',
+    schema: {
+      id: 'event',
+      name: 'Event',
+      fields: [
+        { name: 'title', type: 'text', required: true, item_type: null },
+        { name: 'description', type: 'rich_text', required: false, item_type: null },
+        { name: 'start_date', type: 'datetime', required: true, item_type: null },
+        { name: 'location', type: 'text', required: false, item_type: null },
+        { name: 'image', type: 'image', required: false, item_type: null },
+      ],
+    },
+  },
+]
+
+// ---------------------------------------------------------------------------
 
 const emptyForm = (): ContentTypeSchema => ({
   id: '',
@@ -44,8 +120,12 @@ function openCreate() {
   error.value = ''
 }
 
+function applyTemplate(t: Template) {
+  form.value = JSON.parse(JSON.stringify(t.schema))
+}
+
 function openEdit(ct: ContentTypeSchema) {
-  form.value = JSON.parse(JSON.stringify(ct)) // deep copy
+  form.value = JSON.parse(JSON.stringify(ct))
   editingId.value = ct.id
   showForm.value = true
   error.value = ''
@@ -96,7 +176,6 @@ async function remove(id: string) {
     error.value = String(e)
   }
 }
-
 </script>
 
 <template>
@@ -137,6 +216,24 @@ async function remove(id: string) {
     <div v-if="showForm" class="panel">
       <h2>{{ editingId ? 'Edit Content Type' : 'New Content Type' }}</h2>
       <p v-if="error" class="error">{{ error }}</p>
+
+      <!-- Templates (create mode only) -->
+      <template v-if="!editingId">
+        <p style="font-size:13px;color:#555;margin-bottom:8px;">Start from a template:</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <button
+            v-for="t in TEMPLATES"
+            :key="t.label"
+            class="btn-secondary"
+            style="text-align:left;padding:8px 12px;"
+            @click="applyTemplate(t)"
+          >
+            <div style="font-weight:600;font-size:13px;">{{ t.label }}</div>
+            <div style="font-size:11px;color:#666;margin-top:2px;">{{ t.description }}</div>
+          </button>
+        </div>
+        <div style="border-top:1px solid #e5e5e5;margin-bottom:16px;" />
+      </template>
 
       <label>ID (slug)</label>
       <input

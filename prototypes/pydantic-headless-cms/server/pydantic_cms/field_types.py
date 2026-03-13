@@ -16,6 +16,7 @@ class FieldType(str, Enum):
     date = "date"
     datetime_ = "datetime"
     list_ = "list"
+    image = "image"
 
 
 SCALAR_TYPE_MAP: dict[FieldType, type] = {
@@ -26,6 +27,7 @@ SCALAR_TYPE_MAP: dict[FieldType, type] = {
     FieldType.boolean: bool,
     FieldType.date: datetime.date,
     FieldType.datetime_: datetime.datetime,
+    FieldType.image: str,
 }
 
 

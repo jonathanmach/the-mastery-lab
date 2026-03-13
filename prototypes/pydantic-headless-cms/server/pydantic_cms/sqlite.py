@@ -47,7 +47,7 @@ class SQLiteContentTypeRepository(ContentTypeRepository):
 
     def list_all(self) -> list[ContentTypeSchema]:
         rows = self._conn.execute("SELECT schema FROM content_types").fetchall()
-        return [ContentTypeSchema.model_validate_json(row[0]) for row in rows]
+        return [ContentTypeSchema.model_validate_json(row[0]) for row in rows if row[0] is not None]
 
     def delete(self, id: str) -> bool:
         cursor = self._conn.execute(
