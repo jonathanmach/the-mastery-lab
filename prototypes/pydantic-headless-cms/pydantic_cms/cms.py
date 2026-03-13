@@ -51,7 +51,7 @@ class CMS:
         entry = ContentEntry(
             id=str(uuid.uuid4()),
             content_type_id=content_type_id,
-            data=validated.model_dump(),
+            data=validated.model_dump(mode="json"),
         )
         self._c_repo.save(entry)
         return entry
@@ -73,7 +73,7 @@ class CMS:
         updated = ContentEntry(
             id=id,
             content_type_id=existing.content_type_id,
-            data=validated.model_dump(),
+            data=validated.model_dump(mode="json"),
         )
         self._c_repo.save(updated)
         return updated

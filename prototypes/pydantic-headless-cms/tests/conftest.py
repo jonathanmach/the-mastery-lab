@@ -1,27 +1,41 @@
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
 from pydantic_cms.cms import CMS
 from pydantic_cms.field_types import FieldDefinition, FieldType
 from pydantic_cms.models import ContentTypeSchema
-from pydantic_cms.repository import InMemoryContentRepository, InMemoryContentTypeRepository
+from pydantic_cms.repository import ContentRepository, ContentTypeRepository
+from pydantic_cms.sqlite import (
+    SQLiteContentRepository,
+    SQLiteContentTypeRepository,
+    create_schema,
+)
 
 
 @pytest.fixture
-def content_type_repo() -> InMemoryContentTypeRepository:
-    return InMemoryContentTypeRepository()
+def db_conn() -> sqlite3.Connection:
+    conn = sqlite3.connect(":memory:")
+    create_schema(conn)
+    return conn
 
 
 @pytest.fixture
-def content_repo() -> InMemoryContentRepository:
-    return InMemoryContentRepository()
+def content_type_repo(db_conn: sqlite3.Connection) -> ContentTypeRepository:
+    return SQLiteContentTypeRepository(db_conn)
+
+
+@pytest.fixture
+def content_repo(db_conn: sqlite3.Connection) -> ContentRepository:
+    return SQLiteContentRepository(db_conn)
 
 
 @pytest.fixture
 def cms(
-    content_type_repo: InMemoryContentTypeRepository,
-    content_repo: InMemoryContentRepository,
+    content_type_repo: ContentTypeRepository,
+    content_repo: ContentRepository,
 ) -> CMS:
     return CMS(content_type_repo=content_type_repo, content_repo=content_repo)
 
