@@ -18,19 +18,33 @@ Wait for HAPI FHIR (`:8080`) and OpenSearch (`:9200`) to be healthy.
 uv sync
 ```
 
-### 3. Generate Synthea patient data
+### 3. Get Synthea patient data
 
-Download Synthea and generate bundles:
+The `data/synthea_bundles/` directory is gitignored. Populate it using one of the two options below.
+
+**Option A — Download pre-generated bundles (faster)**
+
+Download a sample dataset from the [Synthea downloads page](https://synthea.mitre.org/downloads) (e.g. the 1K or 10K FHIR R4 bundle set), then extract the JSON files:
 
 ```bash
-# Download synthea JAR (one-time)
+mkdir -p data/synthea_bundles
+
+# Example: 1K sample (adjust filename to whichever you downloaded)
+unzip synthea_sample_data_fhir_r4_sep2019.zip -d /tmp/synthea_sample
+cp /tmp/synthea_sample/fhir/*.json data/synthea_bundles/
+```
+
+**Option B — Generate your own with the Synthea JAR**
+
+```bash
+# Download synthea JAR (one-time, requires Java 11+)
 curl -L https://github.com/synthetichealth/synthea/releases/latest/download/synthea-with-dependencies.jar \
      -o synthea-with-dependencies.jar
 
 # Generate 50 patients
 java -jar synthea-with-dependencies.jar -p 50 --exporter.fhir.export true \
      --exporter.baseDirectory ./data
-mv ./data/fhir/*.json ./data/synthea_bundles/
+mv ./data/fhir/*.json data/synthea_bundles/
 ```
 
 ### 4. Ingest bundles
