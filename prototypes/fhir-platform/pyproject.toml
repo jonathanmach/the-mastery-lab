@@ -1,0 +1,37 @@
+[project]
+name = "fhir-platform"
+version = "0.1.0"
+description = "FHIR R4 healthcare data platform prototype — HAPI FHIR + OpenSearch + FastAPI + Vue"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115.12",
+    "pydantic-settings>=2.9.0",
+    "fhir.resources>=8.0.0",
+    "opensearch-py>=2.7.0",
+    "sqlalchemy>=2.0.40",
+    "httpx>=0.28.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.25.0",
+    "python-dotenv>=1.1.0",
+    "ruff>=0.11.6",
+    "respx>=0.22.0",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

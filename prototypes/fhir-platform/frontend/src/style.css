@@ -1,0 +1,95 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --c-bg: #f8f9fa;
+  --c-surface: #ffffff;
+  --c-border: #dee2e6;
+  --c-text: #212529;
+  --c-muted: #6c757d;
+  --c-primary: #0d6efd;
+  --c-primary-hover: #0b5ed7;
+  --c-success: #198754;
+  --c-warning: #ffc107;
+  --c-danger: #dc3545;
+  --c-tag-bg: #e9ecef;
+  --radius: 6px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+body { margin: 0; background: var(--c-bg); color: var(--c-text); font-size: 14px; }
+
+a { color: var(--c-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  font-size: 13px;
+  color: var(--c-text);
+}
+button:hover { background: var(--c-tag-bg); }
+button.primary {
+  background: var(--c-primary);
+  color: #fff;
+  border-color: var(--c-primary);
+}
+button.primary:hover { background: var(--c-primary-hover); }
+button:disabled { opacity: 0.5; cursor: default; }
+
+input[type="text"], input[type="search"] {
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  background: var(--c-surface);
+}
+input:focus { border-color: var(--c-primary); }
+
+.tag {
+  display: inline-block;
+  background: var(--c-tag-bg);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 12px;
+  color: var(--c-text);
+  margin: 2px;
+}
+.tag.active { background: var(--c-primary); color: #fff; }
+
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge.usable { background: #d1e7dd; color: #0a3622; }
+.badge.partial { background: #fff3cd; color: #664d03; }
+.badge.insufficient { background: #f8d7da; color: #58151c; }
+
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--c-border); font-weight: 600; }
+td { padding: 7px 10px; border-bottom: 1px solid var(--c-border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+
+.spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2px solid var(--c-border);
+  border-top-color: var(--c-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
