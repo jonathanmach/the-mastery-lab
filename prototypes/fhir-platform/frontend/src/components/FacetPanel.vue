@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PatientFacets } from '../api/types'
 import type { SearchFilters } from '../api/types'
 
@@ -24,10 +25,6 @@ const hasActiveFilters = computed(() =>
 )
 </script>
 
-<script lang="ts">
-import { computed } from 'vue'
-export default {}
-</script>
 
 <template>
   <aside class="facet-panel">
