@@ -2,6 +2,17 @@
 
 AWS-first FHIR R4 healthcare data platform prototype using HAPI FHIR (self-hosted), OpenSearch, FastAPI, and Vue.js.
 
+## Screenshots
+
+**Patient search — faceted filtering with live results**
+![Patient list](docs/screenshots/patient-list.png)
+
+**Patient detail — conditions & medications summary**
+![Patient detail summary](docs/screenshots/patient-detail-summary.png)
+
+**Patient detail — clinical timeline**
+![Patient detail timeline](docs/screenshots/patient-detail-timeline.png)
+
 ## Quick Start
 
 ### 1. Start local services
@@ -73,6 +84,8 @@ npm run dev
 Frontend: http://localhost:5173
 
 ## Architecture
+
+> For a detailed breakdown of components, design decisions, and a full reproduction guide, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ```
 Synthea JSON (local files)
