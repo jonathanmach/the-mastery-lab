@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+*.egg-info/
+import_tracking.db*
+data/synthea_bundles/*.json
+node_modules/
+frontend/dist/
+.DS_Store
