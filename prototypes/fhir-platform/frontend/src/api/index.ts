@@ -26,6 +26,9 @@ export async function searchPatients(filters: SearchFilters): Promise<PatientSea
     medication: filters.medication,
     age_band: filters.age_band,
     recent_encounter: filters.recent_encounter,
+    observation: filters.observation,
+    obs_min: filters.obs_min,
+    obs_max: filters.obs_max,
     page: filters.page,
   })
   const res = await fetch(`${BASE}/search${qs}`)
@@ -41,6 +44,7 @@ export async function getPatientFacets(
     condition: filters.condition,
     medication: filters.medication,
     age_band: filters.age_band,
+    observation: filters.observation,
   })
   const res = await fetch(`${BASE}/facets${qs}`)
   if (!res.ok) throw new Error(`Facets failed: ${res.status}`)

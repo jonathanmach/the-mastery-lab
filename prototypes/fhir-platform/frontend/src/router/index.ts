@@ -7,6 +7,6 @@ export default createRouter({
   routes: [
     { path: '/', redirect: '/patients' },
     { path: '/patients', component: PatientListView },
-    { path: '/patients/:id', component: PatientDetailView, props: true },
+    { path: '/patients/:id', name: 'patient-detail', component: PatientDetailView, props: true },
   ],
 })

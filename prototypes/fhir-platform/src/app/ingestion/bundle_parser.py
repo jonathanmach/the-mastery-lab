@@ -1,3 +1,4 @@
+import copy
 import logging
 from dataclasses import dataclass, field
 
@@ -23,6 +24,24 @@ class ResourceResult:
 class ParseResult:
     bundle_id: str | None
     resources: list[ResourceResult] = field(default_factory=list)
+
+
+def prepare_bundle_for_upsert(raw: dict) -> dict:
+    """Rewrite transaction bundle entries from POST to PUT with resource IDs.
+
+    Synthea generates bundles with POST requests and urn:uuid: fullUrls. Rewriting to
+    PUT preserves Synthea UUIDs so resources are created with known IDs. HAPI still
+    resolves the urn:uuid: references internally during transaction processing.
+    """
+    bundle = copy.deepcopy(raw)
+    for entry in bundle.get("entry") or []:
+        resource = entry.get("resource") or {}
+        resource_id = resource.get("id")
+        resource_type = resource.get("resourceType")
+        request = entry.get("request") or {}
+        if resource_id and resource_type and request.get("method") == "POST":
+            entry["request"] = {"method": "PUT", "url": f"{resource_type}/{resource_id}"}
+    return bundle
 
 
 def parse_bundle(raw: dict) -> ParseResult:

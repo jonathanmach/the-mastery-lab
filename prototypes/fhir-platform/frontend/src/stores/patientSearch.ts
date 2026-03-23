@@ -17,6 +17,9 @@ export const usePatientSearchStore = defineStore('patientSearch', () => {
     medication: null,
     age_band: null,
     recent_encounter: null,
+    observation: null,
+    obs_min: null,
+    obs_max: null,
     page: 1,
   })
 
@@ -51,6 +54,9 @@ export const usePatientSearchStore = defineStore('patientSearch', () => {
     filters.medication = null
     filters.age_band = null
     filters.recent_encounter = null
+    filters.observation = null
+    filters.obs_min = null
+    filters.obs_max = null
     filters.page = 1
     fetchResults()
   }

@@ -20,8 +20,13 @@ INDEX_MAPPING = {
             "age_band": {"type": "keyword"},
             "conditions": {"type": "text"},
             "condition_codes": {"type": "keyword"},
+            "condition_pairs": {"type": "keyword"},
             "medications": {"type": "text"},
             "medication_codes": {"type": "keyword"},
+            "medication_pairs": {"type": "keyword"},
+            "observation_codes": {"type": "keyword"},
+            "observation_pairs": {"type": "keyword"},
+            "obs_values": {"type": "object", "dynamic": True},
             "latest_observations": {"type": "object", "enabled": False},
             "last_encounter_date": {"type": "date"},
             "has_active_medication": {"type": "boolean"},
@@ -143,6 +148,16 @@ class SearchProjector:
             for coding in (c.get("code", {}).get("coding") or [])
             if coding.get("code")
         ]
+        # "code|display" pairs for faceting with human-readable labels
+        _seen_codes: set[str] = set()
+        condition_pairs: list[str] = []
+        for c in conditions:
+            for coding in (c.get("code", {}).get("coding") or []):
+                code = coding.get("code", "")
+                if code and code not in _seen_codes:
+                    display = coding.get("display") or c.get("code", {}).get("text") or code
+                    condition_pairs.append(f"{code}|{display}")
+                    _seen_codes.add(code)
 
         # Medications
         med_displays = [
@@ -156,6 +171,19 @@ class SearchProjector:
             for coding in (m.get("medicationCodeableConcept", {}).get("coding") or [])
             if coding.get("code")
         ]
+        _seen_med_codes: set[str] = set()
+        medication_pairs: list[str] = []
+        for m in medications:
+            for coding in (m.get("medicationCodeableConcept", {}).get("coding") or []):
+                code = coding.get("code", "")
+                if code and code not in _seen_med_codes:
+                    display = (
+                        coding.get("display")
+                        or m.get("medicationCodeableConcept", {}).get("text")
+                        or code
+                    )
+                    medication_pairs.append(f"{code}|{display}")
+                    _seen_med_codes.add(code)
         has_active_med = any(m.get("status") == "active" for m in medications)
 
         # Encounters
@@ -185,6 +213,19 @@ class SearchProjector:
                         "date": _resource_date(obs),
                     }
 
+        observation_pairs = [
+            f"{code}|{v['display']}" for code, v in latest_observations.items()
+        ]
+
+        obs_values: dict[str, float] = {}
+        for code, obs_data in latest_observations.items():
+            raw = obs_data.get("value")
+            if isinstance(raw, dict):
+                try:
+                    obs_values[code.replace("-", "_")] = float(raw["value"])
+                except (KeyError, TypeError, ValueError):
+                    pass
+
         return {
             "patient_id": patient.get("id"),
             "name": full_name,
@@ -194,9 +235,14 @@ class SearchProjector:
             "birth_date": birth_date,
             "age_band": _age_band(birth_date),
             "conditions": condition_displays,
-            "condition_codes": list(dict.fromkeys(condition_codes)),  # deduplicated
+            "condition_codes": list(dict.fromkeys(condition_codes)),
+            "condition_pairs": condition_pairs,
             "medications": med_displays,
             "medication_codes": list(dict.fromkeys(med_codes)),
+            "medication_pairs": medication_pairs,
+            "observation_codes": list(latest_observations.keys()),
+            "observation_pairs": observation_pairs,
+            "obs_values": obs_values,
             "latest_observations": latest_observations,
             "last_encounter_date": last_encounter_date,
             "has_active_medication": has_active_med,
@@ -221,6 +267,9 @@ class SearchProjector:
         medication: str | None = None,
         age_band: str | None = None,
         recent_encounter: bool | None = None,
+        observation: str | None = None,
+        obs_min: float | None = None,
+        obs_max: float | None = None,
         page: int = 1,
     ) -> dict:
         filters = [{"term": {"validation_status": "usable"}}]
@@ -235,6 +284,15 @@ class SearchProjector:
             filters.append({"term": {"age_band": age_band}})
         if recent_encounter is not None:
             filters.append({"term": {"has_recent_encounter": recent_encounter}})
+        if observation:
+            filters.append({"term": {"observation_codes": observation}})
+            if obs_min is not None or obs_max is not None:
+                range_clause: dict = {}
+                if obs_min is not None:
+                    range_clause["gte"] = obs_min
+                if obs_max is not None:
+                    range_clause["lte"] = obs_max
+                filters.append({"range": {f"obs_values.{observation.replace('-', '_')}": range_clause}})
 
         query: dict = {"bool": {"filter": filters}}
         if q:
@@ -244,7 +302,7 @@ class SearchProjector:
             "query": query,
             "from": (page - 1) * PAGE_SIZE,
             "size": PAGE_SIZE,
-            "sort": [{"family_name.keyword": {"order": "asc"}}],
+            "sort": [{"family_name": {"order": "asc"}}],
         }
         response = self._client.search(index=self._index, body=body)
         hits = response["hits"]
@@ -261,6 +319,7 @@ class SearchProjector:
         condition: str | None = None,
         medication: str | None = None,
         age_band: str | None = None,
+        observation: str | None = None,
     ) -> dict:
         filters = [{"term": {"validation_status": "usable"}}]
         if gender:
@@ -271,6 +330,8 @@ class SearchProjector:
             filters.append({"term": {"medication_codes": medication}})
         if age_band:
             filters.append({"term": {"age_band": age_band}})
+        if observation:
+            filters.append({"term": {"observation_codes": observation}})
 
         body = {
             "query": {"bool": {"filter": filters}},
@@ -278,9 +339,10 @@ class SearchProjector:
             "aggs": {
                 "gender": {"terms": {"field": "gender", "size": 10}},
                 "age_band": {"terms": {"field": "age_band", "size": 10}},
-                "diagnosis": {"terms": {"field": "condition_codes", "size": 30}},
-                "medication": {"terms": {"field": "medication_codes", "size": 30}},
+                "diagnosis": {"terms": {"field": "condition_pairs", "size": 30}},
+                "medication": {"terms": {"field": "medication_pairs", "size": 30}},
                 "recent_encounter": {"terms": {"field": "has_recent_encounter", "size": 2}},
+                "observation": {"terms": {"field": "observation_pairs", "size": 50}},
             },
         }
         response = self._client.search(index=self._index, body=body)
@@ -289,10 +351,22 @@ class SearchProjector:
         def buckets(agg_name: str) -> list[dict]:
             return [{"key": str(b["key"]), "count": b["doc_count"]} for b in aggs[agg_name]["buckets"]]
 
+        def pair_buckets(agg_name: str) -> list[dict]:
+            result = []
+            for b in aggs[agg_name]["buckets"]:
+                pair = str(b["key"])
+                if "|" in pair:
+                    code, display = pair.split("|", 1)
+                else:
+                    code = display = pair
+                result.append({"key": code, "display": display, "count": b["doc_count"]})
+            return result
+
         return {
             "gender": buckets("gender"),
             "age_band": buckets("age_band"),
-            "diagnosis": buckets("diagnosis"),
-            "medication": buckets("medication"),
+            "diagnosis": pair_buckets("diagnosis"),
+            "medication": pair_buckets("medication"),
             "recent_encounter": buckets("recent_encounter"),
+            "observation": pair_buckets("observation"),
         }

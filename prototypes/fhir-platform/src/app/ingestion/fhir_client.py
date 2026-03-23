@@ -11,7 +11,7 @@ class FHIRClient:
 
     def __init__(self, base_url: str, client: httpx.Client | None = None):
         self.base_url = base_url.rstrip("/")
-        self._client = client or httpx.Client(timeout=30.0)
+        self._client = client or httpx.Client(timeout=httpx.Timeout(10.0, read=120.0))
 
     # ------------------------------------------------------------------
     # Write
@@ -23,6 +23,16 @@ class FHIRClient:
         response = self._client.put(
             url,
             content=json.dumps(resource_dict),
+            headers={"Content-Type": "application/fhir+json", "Accept": "application/fhir+json"},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def post_transaction_bundle(self, bundle_dict: dict) -> dict:
+        """POST a FHIR transaction bundle. HAPI resolves urn:uuid: references internally."""
+        response = self._client.post(
+            self.base_url,
+            content=json.dumps(bundle_dict),
             headers={"Content-Type": "application/fhir+json", "Accept": "application/fhir+json"},
         )
         response.raise_for_status()

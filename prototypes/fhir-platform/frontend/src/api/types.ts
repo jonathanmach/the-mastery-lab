@@ -1,5 +1,6 @@
 export interface FacetBucket {
   key: string
+  display?: string
   count: number
 }
 
@@ -9,6 +10,7 @@ export interface PatientFacets {
   diagnosis: FacetBucket[]
   medication: FacetBucket[]
   recent_encounter: FacetBucket[]
+  observation: FacetBucket[]
 }
 
 export interface PatientHit {
@@ -68,5 +70,8 @@ export interface SearchFilters {
   medication: string | null
   age_band: string | null
   recent_encounter: boolean | null
+  observation: string | null
+  obs_min: number | null
+  obs_max: number | null
   page: number
 }

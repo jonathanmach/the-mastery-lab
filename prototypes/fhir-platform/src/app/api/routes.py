@@ -26,6 +26,9 @@ def search_patients(
     medication: str | None = Query(default=None),
     age_band: str | None = Query(default=None),
     recent_encounter: bool | None = Query(default=None),
+    observation: str | None = Query(default=None),
+    obs_min: float | None = Query(default=None),
+    obs_max: float | None = Query(default=None),
     page: int = Query(default=1, ge=1),
 ):
     return projector.search(
@@ -35,6 +38,9 @@ def search_patients(
         medication=medication,
         age_band=age_band,
         recent_encounter=recent_encounter,
+        observation=observation,
+        obs_min=obs_min,
+        obs_max=obs_max,
         page=page,
     )
 
@@ -46,8 +52,12 @@ def get_facets(
     condition: str | None = Query(default=None),
     medication: str | None = Query(default=None),
     age_band: str | None = Query(default=None),
+    observation: str | None = Query(default=None),
 ):
-    return projector.facets(gender=gender, condition=condition, medication=medication, age_band=age_band)
+    return projector.facets(
+        gender=gender, condition=condition, medication=medication,
+        age_band=age_band, observation=observation,
+    )
 
 
 @router.get("/{patient_id}/summary", response_model=PatientSummary)

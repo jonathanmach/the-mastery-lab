@@ -3,18 +3,22 @@ services:
     image: hapiproject/hapi:latest
     container_name: fhir_platform_hapi
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       hapi.fhir.fhir_version: R4
       hapi.fhir.allow_multiple_delete: "true"
       hapi.fhir.reuse_cached_search_results_millis: "0"
-      spring.datasource.url: jdbc:h2:mem:hapi
+      spring.datasource.url: jdbc:h2:file:/data/hapi/hapi;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1
       spring.datasource.username: sa
       spring.datasource.password: ""
       spring.datasource.driverClassName: org.h2.Driver
       spring.jpa.properties.hibernate.dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirH2Dialect
+      JAVA_OPTS: "-Xms1g -Xmx2g"
+    user: root
+    volumes:
+      - hapi_data:/data/hapi
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/fhir/metadata"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/fhir/metadata"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -52,3 +56,4 @@ services:
 
 volumes:
   opensearch_data:
+  hapi_data:

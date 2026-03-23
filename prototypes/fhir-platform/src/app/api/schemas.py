@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 class FacetBucket(BaseModel):
     key: str
+    display: str | None = None
     count: int
 
 
@@ -12,6 +13,7 @@ class PatientFacetsResponse(BaseModel):
     diagnosis: list[FacetBucket]
     medication: list[FacetBucket]
     recent_encounter: list[FacetBucket]
+    observation: list[FacetBucket]
 
 
 class PatientHit(BaseModel):
