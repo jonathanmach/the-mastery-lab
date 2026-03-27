@@ -60,7 +60,15 @@ export interface PatientSummary {
   conditions: Record<string, unknown>[]
   medications: Record<string, unknown>[]
   latest_observations: Array<{ code: string; display: string; value: unknown; date: string | null }>
+  encounters: Record<string, unknown>[]
   validation_status: string
+}
+
+export interface ChartSpec {
+  type: 'bar' | 'line' | 'pie'
+  label_column: string
+  value_column: string
+  title: string
 }
 
 export interface SearchFilters {

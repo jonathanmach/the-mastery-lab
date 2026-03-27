@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     # Local Synthea bundles directory
     synthea_bundles_dir: str = "./data/synthea_bundles"
 
+    # OMOP CDM (PostgreSQL)
+    omop_database_url: str | None = None
+
+    # Anthropic API (for OMOP AI chat)
+    anthropic_api_key: str | None = None
+
     log_level: str = "INFO"
 
 

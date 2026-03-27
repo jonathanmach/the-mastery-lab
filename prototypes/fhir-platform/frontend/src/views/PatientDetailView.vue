@@ -92,6 +92,120 @@ const EVENT_BG: Record<string, string> = {
   MedicationRequest: '#fef3c7',
 }
 
+// Detail panel
+const selectedItem = ref<Record<string, unknown> | null>(null)
+const selectedType = ref<'condition' | 'medication' | 'observation' | 'encounter' | null>(null)
+
+function openPanel(item: unknown, type: 'condition' | 'medication' | 'observation') {
+  selectedItem.value = item as Record<string, unknown>
+  selectedType.value = type
+}
+
+function openPanelFromTimeline(ev: { event_type: string; resource_id: string | null }) {
+  if (!summary.value || !ev.resource_id) return
+  if (ev.event_type === 'Condition') {
+    const item = (summary.value.conditions as any[]).find((c: any) => c.id === ev.resource_id)
+    if (item) openPanel(item, 'condition')
+  } else if (ev.event_type === 'MedicationRequest') {
+    const item = (summary.value.medications as any[]).find((m: any) => m.id === ev.resource_id)
+    if (item) openPanel(item, 'medication')
+  } else if (ev.event_type === 'Observation') {
+    const item = (summary.value.latest_observations as any[]).find((o: any) => o.id === ev.resource_id)
+    if (item) openPanel(item, 'observation')
+  } else if (ev.event_type === 'Encounter') {
+    const item = (summary.value.encounters as any[]).find((e: any) => e.id === ev.resource_id)
+    if (item) openPanel(item, 'encounter')
+  }
+}
+function closePanel() {
+  selectedItem.value = null
+  selectedType.value = null
+}
+
+function conditionDetail(c: Record<string, unknown>) {
+  const cs = c as any
+  return {
+    clinicalStatus:      cs.clinicalStatus?.coding?.[0]?.code,
+    verificationStatus:  cs.verificationStatus?.coding?.[0]?.code,
+    category:            cs.category?.[0]?.coding?.[0]?.display ?? cs.category?.[0]?.coding?.[0]?.code,
+    severity:            cs.severity?.coding?.[0]?.display,
+    onset:               cs.onsetDateTime?.slice(0, 10),
+    abatement:           cs.abatementDateTime?.slice(0, 10),
+    recorded:            cs.recordedDate?.slice(0, 10),
+    snomedCode:          cs.code?.coding?.[0]?.code,
+    notes:               (cs.note as any[])?.map((n: any) => n.text).filter(Boolean) ?? [],
+  }
+}
+
+function medDetail(m: Record<string, unknown>) {
+  const ms = m as any
+  const dosage = ms.dosageInstruction?.[0]
+  const doseQty = dosage?.doseAndRate?.[0]?.doseQuantity
+  const dispense = ms.dispenseRequest
+  return {
+    status:       ms.status,
+    intent:       ms.intent,
+    authored:     ms.authoredOn?.slice(0, 10),
+    dosageText:   dosage?.text,
+    route:        dosage?.route?.coding?.[0]?.display,
+    dose:         doseQty ? `${doseQty.value} ${doseQty.unit}` : null,
+    timing:       dosage?.timing?.code?.text,
+    reasonCode:   ms.reasonCode?.[0]?.coding?.[0]?.display ?? ms.reasonCode?.[0]?.text,
+    rxNormCode:   ms.medicationCodeableConcept?.coding?.[0]?.code,
+    requester:    ms.requester?.display,
+    quantity:     dispense?.quantity ? `${dispense.quantity.value} ${dispense.quantity.unit}` : null,
+    refills:      dispense?.numberOfRepeatsAllowed,
+    notes:        (ms.note as any[])?.map((n: any) => n.text).filter(Boolean) ?? [],
+  }
+}
+
+const ENC_CLASS_LABELS: Record<string, string> = {
+  AMB: 'Ambulatory', IMP: 'Inpatient', EMER: 'Emergency',
+  HH: 'Home Health', VR: 'Virtual', OBSENC: 'Observation',
+}
+
+function encDetail(e: Record<string, unknown>) {
+  const es = e as any
+  const classCode = es.class?.code
+  return {
+    status:       es.status,
+    class:        ENC_CLASS_LABELS[classCode] ?? classCode,
+    type:         es.type?.[0]?.coding?.[0]?.display ?? es.type?.[0]?.text,
+    reason:       es.reasonCode?.[0]?.coding?.[0]?.display ?? es.reasonCode?.[0]?.text,
+    start:        es.period?.start?.slice(0, 10),
+    end:          es.period?.end?.slice(0, 10),
+    participants: (es.participant as any[])?.map((p: any) =>
+      p.individual?.display ?? p.individual?.reference
+    ).filter(Boolean) ?? [],
+    diagnoses:    (es.diagnosis as any[])?.map((d: any) =>
+      d.condition?.display ?? d.condition?.reference
+    ).filter(Boolean) ?? [],
+    location:     es.location?.[0]?.location?.display,
+    serviceProvider: es.serviceProvider?.display,
+    discharge:    es.hospitalization?.dischargeDisposition?.coding?.[0]?.display,
+  }
+}
+
+function obsDetail(o: Record<string, unknown>) {
+  const os = o as any
+  const ref = os.referenceRange?.[0]
+  const refText = ref?.text ?? (ref?.low || ref?.high
+    ? `${ref?.low?.value ?? '?'} – ${ref?.high?.value ?? '?'} ${ref?.low?.unit ?? ref?.high?.unit ?? ''}`.trim()
+    : null)
+  return {
+    status:         os.status,
+    category:       os.category,
+    interpretation: os.interpretation,
+    referenceRange: refText,
+    unit:           os.value?.unit,
+    components:     (os.components as any[])?.map((c: any) => ({
+      display: c.code?.coding?.[0]?.display ?? c.code?.text,
+      value:   c.valueQuantity ? `${c.valueQuantity.value} ${c.valueQuantity.unit}` : '—',
+    })),
+    notes:          (os.note as string[]) ?? [],
+  }
+}
+
 // Group timeline events by year
 const timelineByYear = computed(() => {
   if (!timeline.value) return []
@@ -160,6 +274,11 @@ const timelineByYear = computed(() => {
               <span class="stat-num">{{ summary.latest_observations.length }}</span>
               <span class="stat-label">Observations</span>
             </div>
+            <div class="stat-divider"/>
+            <div class="stat-item">
+              <span class="stat-num">{{ summary.encounters.length }}</span>
+              <span class="stat-label">Encounters</span>
+            </div>
           </div>
         </div>
       </div>
@@ -191,10 +310,16 @@ const timelineByYear = computed(() => {
               <span class="heading-count">{{ summary.conditions.length }}</span>
             </div>
             <table v-if="summary.conditions.length">
-              <thead><tr><th>Condition</th><th>Recorded</th></tr></thead>
+              <thead><tr><th>Condition</th><th>Status</th><th>Recorded</th></tr></thead>
               <tbody>
-                <tr v-for="(c, i) in summary.conditions" :key="i">
+                <tr v-for="(c, i) in summary.conditions" :key="i" class="clickable-row" @click="openPanel(c, 'condition')">
                   <td>{{ conditionDisplay(c as Record<string, unknown>) }}</td>
+                  <td>
+                    <span v-if="(c as any).clinicalStatus?.coding?.[0]?.code" class="status-pill" :class="(c as any).clinicalStatus.coding[0].code === 'active' ? 'active' : 'inactive'">
+                      {{ (c as any).clinicalStatus.coding[0].code }}
+                    </span>
+                    <span v-else class="status-pill inactive">—</span>
+                  </td>
                   <td class="date-cell">{{ (c as Record<string, unknown>).recordedDate?.toString().slice(0, 10) || '—' }}</td>
                 </tr>
               </tbody>
@@ -211,7 +336,7 @@ const timelineByYear = computed(() => {
             <table v-if="summary.medications.length">
               <thead><tr><th>Medication</th><th>Status</th><th>Date</th></tr></thead>
               <tbody>
-                <tr v-for="(m, i) in summary.medications" :key="i">
+                <tr v-for="(m, i) in summary.medications" :key="i" class="clickable-row" @click="openPanel(m, 'medication')">
                   <td>{{ medDisplay(m as Record<string, unknown>) }}</td>
                   <td>
                     <span class="status-pill" :class="(m as Record<string,unknown>).status === 'active' ? 'active' : 'inactive'">
@@ -226,6 +351,25 @@ const timelineByYear = computed(() => {
           </div>
         </div>
 
+        <!-- Encounters -->
+        <div class="card">
+          <div class="card-heading">
+            <h3>Encounters</h3>
+            <span class="heading-count">{{ summary.encounters.length }}</span>
+          </div>
+          <table v-if="summary.encounters.length">
+            <thead><tr><th>Type / Reason</th><th>Class</th><th>Date</th></tr></thead>
+            <tbody>
+              <tr v-for="(e, i) in summary.encounters" :key="i" class="clickable-row" @click="openPanel(e, 'encounter')">
+                <td>{{ (e as any).type?.[0]?.coding?.[0]?.display ?? (e as any).type?.[0]?.text ?? (e as any).reasonCode?.[0]?.coding?.[0]?.display ?? 'Encounter' }}</td>
+                <td>{{ ENC_CLASS_LABELS[(e as any).class?.code] ?? (e as any).class?.code ?? '—' }}</td>
+                <td class="date-cell">{{ (e as any).period?.start?.slice(0, 10) ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="empty-msg">No encounters recorded.</p>
+        </div>
+
         <!-- Observations -->
         <div class="card" v-if="summary.latest_observations.length">
           <div class="card-heading">
@@ -233,10 +377,13 @@ const timelineByYear = computed(() => {
             <span class="heading-count">{{ summary.latest_observations.length }}</span>
           </div>
           <div class="obs-grid">
-            <div v-for="obs in summary.latest_observations" :key="obs.code" class="obs-card">
+            <div v-for="obs in summary.latest_observations" :key="obs.code" class="obs-card clickable-card" @click="openPanel(obs, 'observation' as any)">
               <div class="obs-label">{{ obs.display }}</div>
               <div class="obs-value">{{ obsValueDisplay(obs) }}</div>
-              <div class="obs-date">{{ obs.date?.slice(0, 10) || '—' }}</div>
+              <div class="obs-footer">
+                <span class="obs-date">{{ obs.date?.slice(0, 10) || '—' }}</span>
+                <span v-if="obs.category" class="obs-category-pill">{{ obs.category }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -247,7 +394,7 @@ const timelineByYear = computed(() => {
         <div v-if="timeline && timelineByYear.length" class="timeline-wrap card">
           <div v-for="group in timelineByYear" :key="group.year" class="tl-year-group">
             <div class="tl-year-label">{{ group.year }}</div>
-            <div v-for="(ev, i) in group.events" :key="i" class="timeline-item">
+            <div v-for="(ev, i) in group.events" :key="i" class="timeline-item tl-clickable" @click="openPanelFromTimeline(ev)">
               <div class="tl-dot" :style="{ background: EVENT_COLORS[ev.event_type] || '#94a3b8' }" />
               <div class="tl-body">
                 <span class="tl-type-badge" :style="{ background: EVENT_BG[ev.event_type] || '#f1f5f9', color: EVENT_COLORS[ev.event_type] || '#64748b' }">
@@ -276,6 +423,139 @@ const timelineByYear = computed(() => {
         </template>
       </div>
     </template>
+
+    <!-- Detail slide-out panel -->
+    <Teleport to="body">
+      <Transition name="panel">
+        <div v-if="selectedItem" class="panel-overlay" @click.self="closePanel">
+          <div class="detail-panel">
+            <div class="panel-header">
+              <h2 class="panel-title">
+                {{
+                selectedType === 'condition'  ? conditionDisplay(selectedItem) :
+                selectedType === 'medication' ? medDisplay(selectedItem) :
+                selectedType === 'encounter'  ? (encDetail(selectedItem).type ?? encDetail(selectedItem).reason ?? 'Encounter') :
+                (selectedItem as any).display
+              }}
+              </h2>
+              <button class="panel-close" @click="closePanel">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
+              </button>
+            </div>
+
+            <!-- Condition detail -->
+            <template v-if="selectedType === 'condition' && selectedItem">
+              <div class="panel-body">
+                <div v-for="([label, value]) in ([
+                  ['Clinical Status',     conditionDetail(selectedItem).clinicalStatus],
+                  ['Verification',        conditionDetail(selectedItem).verificationStatus],
+                  ['Category',            conditionDetail(selectedItem).category],
+                  ['Severity',            conditionDetail(selectedItem).severity],
+                  ['Onset',               conditionDetail(selectedItem).onset],
+                  ['Abatement',           conditionDetail(selectedItem).abatement],
+                  ['Recorded',            conditionDetail(selectedItem).recorded],
+                  ['SNOMED Code',         conditionDetail(selectedItem).snomedCode],
+                ] as [string, string | undefined][])" :key="label" class="detail-row">
+                  <span class="detail-label">{{ label }}</span>
+                  <span class="detail-value" :class="{ empty: !value }">{{ value || '—' }}</span>
+                </div>
+                <div v-if="conditionDetail(selectedItem).notes.length" class="detail-notes">
+                  <span class="detail-label">Notes</span>
+                  <p v-for="(note, i) in conditionDetail(selectedItem).notes" :key="i" class="note-text">{{ note }}</p>
+                </div>
+              </div>
+            </template>
+
+            <!-- Medication detail -->
+            <template v-else-if="selectedType === 'medication' && selectedItem">
+              <div class="panel-body">
+                <div v-for="([label, value]) in ([
+                  ['Status',          medDetail(selectedItem).status],
+                  ['Intent',          medDetail(selectedItem).intent],
+                  ['Authored',        medDetail(selectedItem).authored],
+                  ['Dosage',          medDetail(selectedItem).dosageText],
+                  ['Route',           medDetail(selectedItem).route],
+                  ['Dose',            medDetail(selectedItem).dose],
+                  ['Timing',          medDetail(selectedItem).timing],
+                  ['Reason',          medDetail(selectedItem).reasonCode],
+                  ['Prescribed by',   medDetail(selectedItem).requester],
+                  ['Quantity',        medDetail(selectedItem).quantity],
+                  ['Refills',         medDetail(selectedItem).refills?.toString()],
+                  ['RxNorm Code',     medDetail(selectedItem).rxNormCode],
+                ] as [string, string | undefined][])" :key="label" class="detail-row">
+                  <span class="detail-label">{{ label }}</span>
+                  <span class="detail-value" :class="{ empty: !value }">{{ value || '—' }}</span>
+                </div>
+                <div v-if="medDetail(selectedItem).notes.length" class="detail-notes">
+                  <span class="detail-label">Notes</span>
+                  <p v-for="(note, i) in medDetail(selectedItem).notes" :key="i" class="note-text">{{ note }}</p>
+                </div>
+              </div>
+            </template>
+
+            <!-- Observation detail -->
+            <template v-else-if="selectedType === 'observation' && selectedItem">
+              <div class="panel-body">
+                <div v-for="([label, value]) in ([
+                  ['LOINC Code',      (selectedItem as any).code],
+                  ['Status',          obsDetail(selectedItem).status],
+                  ['Category',        obsDetail(selectedItem).category],
+                  ['Date',            (selectedItem as any).date?.slice(0, 10)],
+                  ['Interpretation',  obsDetail(selectedItem).interpretation],
+                  ['Reference Range', obsDetail(selectedItem).referenceRange],
+                ] as [string, string | undefined][])" :key="label" class="detail-row">
+                  <span class="detail-label">{{ label }}</span>
+                  <span class="detail-value" :class="{ empty: !value }">{{ value || '—' }}</span>
+                </div>
+                <template v-if="obsDetail(selectedItem).components?.length">
+                  <div class="detail-section-label">Components</div>
+                  <div v-for="(comp, i) in obsDetail(selectedItem).components" :key="i" class="detail-row">
+                    <span class="detail-label">{{ comp.display }}</span>
+                    <span class="detail-value">{{ comp.value }}</span>
+                  </div>
+                </template>
+                <div v-if="obsDetail(selectedItem).notes.length" class="detail-notes">
+                  <span class="detail-label">Notes</span>
+                  <p v-for="(note, i) in obsDetail(selectedItem).notes" :key="i" class="note-text">{{ note }}</p>
+                </div>
+              </div>
+            </template>
+
+            <!-- Encounter detail -->
+            <template v-else-if="selectedType === 'encounter' && selectedItem">
+              <div class="panel-body">
+                <div v-for="([label, value]) in ([
+                  ['Status',           encDetail(selectedItem).status],
+                  ['Class',            encDetail(selectedItem).class],
+                  ['Type',             encDetail(selectedItem).type],
+                  ['Reason',           encDetail(selectedItem).reason],
+                  ['Start',            encDetail(selectedItem).start],
+                  ['End',              encDetail(selectedItem).end],
+                  ['Location',         encDetail(selectedItem).location],
+                  ['Service Provider', encDetail(selectedItem).serviceProvider],
+                  ['Discharge',        encDetail(selectedItem).discharge],
+                ] as [string, string | undefined][])" :key="label" class="detail-row">
+                  <span class="detail-label">{{ label }}</span>
+                  <span class="detail-value" :class="{ empty: !value }">{{ value || '—' }}</span>
+                </div>
+                <template v-if="encDetail(selectedItem).participants.length">
+                  <div class="detail-section-label">Participants</div>
+                  <div v-for="(p, i) in encDetail(selectedItem).participants" :key="i" class="detail-row">
+                    <span class="detail-value">{{ p }}</span>
+                  </div>
+                </template>
+                <template v-if="encDetail(selectedItem).diagnoses.length">
+                  <div class="detail-section-label">Diagnoses</div>
+                  <div v-for="(d, i) in encDetail(selectedItem).diagnoses" :key="i" class="detail-row">
+                    <span class="detail-value">{{ d }}</span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -430,7 +710,19 @@ const timelineByYear = computed(() => {
 }
 .obs-label { font-size: 11px; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.3; }
 .obs-value { font-size: 18px; font-weight: 700; color: var(--c-text); line-height: 1.2; }
+.obs-footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 2px; }
 .obs-date { font-size: 11px; color: var(--c-muted); }
+.obs-category-pill {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--c-accent);
+  background: color-mix(in srgb, var(--c-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 25%, transparent);
+  border-radius: 99px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  text-transform: lowercase;
+}
 
 /* Timeline */
 .timeline-wrap { padding: 20px; }
@@ -485,6 +777,8 @@ const timelineByYear = computed(() => {
   white-space: nowrap;
 }
 .tl-date { color: var(--c-muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tl-clickable { cursor: pointer; border-radius: 6px; padding-left: 4px; padding-right: 4px; margin-left: -4px; transition: background 0.1s; }
+.tl-clickable:hover { background: var(--c-tag-bg); }
 .tl-desc { color: var(--c-text-secondary); flex: 1; }
 
 /* Raw FHIR */
@@ -502,6 +796,118 @@ const timelineByYear = computed(() => {
   margin: 0;
   line-height: 1.6;
 }
+
+/* Clickable rows / cards */
+.clickable-row { cursor: pointer; transition: background 0.1s; }
+.clickable-row:hover { background: var(--c-tag-bg); }
+.clickable-card { cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }
+.clickable-card:hover { border-color: var(--c-primary); box-shadow: 0 0 0 2px var(--c-primary-light); }
+
+.detail-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-muted);
+  padding: 14px 0 4px;
+}
+
+/* Slide-out panel */
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}
+.detail-panel {
+  width: 380px;
+  max-width: 92vw;
+  height: 100%;
+  background: var(--c-surface);
+  border-left: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+.panel-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--c-text);
+}
+.panel-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--c-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.panel-close:hover { background: var(--c-tag-bg); color: var(--c-text); }
+.panel-close svg { width: 14px; height: 14px; }
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 13px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label {
+  color: var(--c-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+.detail-value { color: var(--c-text); text-align: right; }
+.detail-value.empty { color: var(--c-muted); }
+.detail-notes {
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.note-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+  background: var(--c-tag-bg);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+/* Panel transition */
+.panel-enter-active, .panel-leave-active { transition: opacity 0.2s; }
+.panel-enter-active .detail-panel, .panel-leave-active .detail-panel { transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.panel-enter-from, .panel-leave-to { opacity: 0; }
+.panel-enter-from .detail-panel, .panel-leave-to .detail-panel { transform: translateX(100%); }
 
 @media (max-width: 640px) {
   .two-col { grid-template-columns: 1fr; }

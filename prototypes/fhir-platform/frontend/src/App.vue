@@ -19,6 +19,22 @@ const isDetail = computed(() => route.name === 'patient-detail' || !!route.param
           <span class="brand-name">FHIR Platform</span>
           <span class="brand-tag">R4</span>
         </RouterLink>
+
+        <nav class="main-nav">
+          <RouterLink to="/patients" class="nav-link" :class="{ active: route.path.startsWith('/patients') }">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+            </svg>
+            Patients
+          </RouterLink>
+          <RouterLink to="/omop" class="nav-link" :class="{ active: route.path === '/omop' }">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+            </svg>
+            OMOP Chat
+          </RouterLink>
+        </nav>
+
         <nav v-if="isDetail" class="breadcrumb">
           <RouterLink to="/patients" class="bc-link">Patients</RouterLink>
           <span class="bc-sep">›</span>
@@ -75,7 +91,28 @@ header {
   letter-spacing: 0.5px;
 }
 
-.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-link svg { width: 15px; height: 15px; }
+.nav-link:hover { color: #f8fafc; background: rgba(255,255,255,0.07); text-decoration: none; }
+.nav-link.active { color: #f8fafc; background: rgba(255,255,255,0.1); }
+
+.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-left: auto; }
 .bc-link { color: #94a3b8; }
 .bc-link:hover { color: #f8fafc; text-decoration: none; }
 .bc-sep { color: #475569; }

@@ -58,6 +58,7 @@ class PatientSummary(BaseModel):
     conditions: list[dict]
     medications: list[dict]
     latest_observations: list[dict]
+    encounters: list[dict]
     validation_status: str
 
 

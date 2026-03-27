@@ -99,11 +99,20 @@ def get_patient_summary(patient_id: str, fhir_client: FHIRClientDep):
             code = coding.get("code")
             if code and code not in latest_obs:
                 value = obs.get("valueQuantity") or obs.get("valueString") or obs.get("valueCodeableConcept")
+                category_codings = (obs.get("category") or [{}])[0].get("coding") or [{}]
+                interp_codings = (obs.get("interpretation") or [{}])[0].get("coding") or [{}]
                 latest_obs[code] = {
+                    "id": obs.get("id"),
                     "code": code,
                     "display": coding.get("display", code),
                     "value": value,
                     "date": _resource_date(obs),
+                    "status": obs.get("status"),
+                    "category": category_codings[0].get("display") or category_codings[0].get("code"),
+                    "interpretation": interp_codings[0].get("code"),
+                    "referenceRange": obs.get("referenceRange"),
+                    "components": obs.get("component"),
+                    "note": [n.get("text") for n in (obs.get("note") or []) if n.get("text")],
                 }
 
     from app.projection.search_projector import _validation_status
@@ -125,6 +134,7 @@ def get_patient_summary(patient_id: str, fhir_client: FHIRClientDep):
         conditions=conditions,
         medications=medications,
         latest_observations=list(latest_obs.values()),
+        encounters=encounters,
         validation_status=validation,
     )
 
