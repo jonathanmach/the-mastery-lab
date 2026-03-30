@@ -15,4 +15,6 @@ A space for experimentation and learning 🚀
 
 - [Flask dependency injection](flask-dependency-injection-poc/README.md): Experimenting with dependency injection in Flask: clean setups, nested dependencies, dev experience, and pitfalls. Conflict-related issues between [Flask-Injector](https://github.com/python-injector/flask_injector) and ([Flask-Pydantic](https://github.com/bauerji/flask-pydantic) or [Flask OpenAPI3](https://github.com/luolingchun/flask-openapi3)). ![Custom Badge](https://img.shields.io/badge/Outcome-Unresolved-yellow)
 
+- [gRPC: Go client + Python server](experiments/grpc-go-python-bookmarks/README.md): Exploring a cross-language gRPC setup with a Go CLI client, a Python server, and a shared protobuf contract for bookmark management. ![Custom Badge](https://img.shields.io/badge/Outcome-Success-brightgreen)
+
 - [Flutter + PowerSync integration](flutter/flutter_powersync_integration/README.md): Offline-first todo app integrating Flutter with PowerSync, FastAPI, and PostgreSQL. Explores real-time sync, JWT auth, and SQLite/Postgres type mapping. ![Custom Badge](https://img.shields.io/badge/Outcome-Success-brightgreen)

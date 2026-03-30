@@ -1,0 +1,65 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    // {
+    //   "name": "Python: Debug bookmark server",
+    //   "type": "debugpy",
+    //   "request": "launch",
+    //   "module": "app.server",
+    //   "cwd": "${workspaceFolder}/python-server",
+    //   "python": "${workspaceFolder}/python-server/.venv/bin/python",
+    //   "console": "integratedTerminal",
+    //   "justMyCode": false,
+    //   "env": {
+    //     "PYTHONPATH": "${workspaceFolder}/python-server/src:${workspaceFolder}/python-server/src/app/generated"
+    //   }
+    // },
+    {
+      "name": "Python: Debug bookmark server (50055)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.server",
+      "cwd": "${workspaceFolder}/python-server",
+      "python": "${workspaceFolder}/python-server/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "args": [
+        "--port",
+        "50055"
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/python-server/src:${workspaceFolder}/python-server/src/app/generated"
+      }
+    },
+    {
+      "name": "Go: Debug bookmark CLI",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/go-client/cmd/bookmarks",
+      "cwd": "${workspaceFolder}/go-client",
+      "args": [
+        "--addr",
+        "127.0.0.1:50055",
+        "list"
+      ]
+    },
+    {
+      "name": "Go: Debug bookmark CLI tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/go-client/cmd/bookmarks",
+      "cwd": "${workspaceFolder}/go-client"
+    }
+  ],
+  // "compounds": [
+  //   {
+  //     "name": "Debug server + Go CLI",
+  //     "configurations": [
+  //       "Python: Debug bookmark server",
+  //       "Go: Debug bookmark CLI"
+  //     ]
+  //   }
+  // ]
+}
