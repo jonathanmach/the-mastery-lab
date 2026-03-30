@@ -1,0 +1,30 @@
+[project]
+name = "grpc-go-python-bookmarks-python-server"
+version = "0.1.0"
+description = "Python gRPC server for the Go/Python bookmark experiment"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "grpcio>=1.71.0",
+    "grpcio-tools>=1.71.0",
+    "protobuf>=5.29.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
+
+[project.scripts]
+bookmark-server = "app.server:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "src/app/generated"]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/app"]

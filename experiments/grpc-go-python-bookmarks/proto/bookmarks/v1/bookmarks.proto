@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package bookmarks.v1;
+
+// go_package tells protoc-gen-go where to place the generated Go files and
+// what to name the package. The value has two parts separated by a semicolon:
+//   - Before ";": the Go import path (module path + directory for generated files)
+//   - After  ";": the Go package name used in `package` declarations in those files
+option go_package = "github.com/jonathanfmach/the-mastery-lab/experiments/grpc-go-python-bookmarks/go-client/internal/generated/bookmarks/v1;bookmarksv1";
+
+message Bookmark {
+  string id = 1;
+  string url = 2;
+  string title = 3;
+  string description = 4;
+  repeated string tags = 5;
+  int64 created_at_unix = 6;
+}
+
+message CreateBookmarkRequest {
+  string url = 1;
+  string title = 2;
+  string description = 3;
+  repeated string tags = 4;
+}
+
+message CreateBookmarkResponse {
+  Bookmark bookmark = 1;
+}
+
+message GetBookmarkRequest {
+  string id = 1;
+}
+
+message GetBookmarkResponse {
+  Bookmark bookmark = 1;
+}
+
+message ListBookmarksRequest {}
+
+message ListBookmarksResponse {
+  repeated Bookmark bookmarks = 1;
+}
+
+message TagBookmarkRequest {
+  string id = 1;
+  repeated string tags = 2;
+}
+
+message TagBookmarkResponse {
+  Bookmark bookmark = 1;
+}
+
+message DeleteBookmarkRequest {
+  string id = 1;
+}
+
+message DeleteBookmarkResponse {
+  string id = 1;
+}
+
+service BookmarkService {
+  rpc CreateBookmark(CreateBookmarkRequest) returns (CreateBookmarkResponse);
+  rpc GetBookmark(GetBookmarkRequest) returns (GetBookmarkResponse);
+  rpc ListBookmarks(ListBookmarksRequest) returns (ListBookmarksResponse);
+  rpc TagBookmark(TagBookmarkRequest) returns (TagBookmarkResponse);
+  rpc DeleteBookmark(DeleteBookmarkRequest) returns (DeleteBookmarkResponse);
+}
