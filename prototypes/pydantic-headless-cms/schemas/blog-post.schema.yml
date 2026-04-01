@@ -1,0 +1,27 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: blog-post
+title: Blog Post
+x-cms:
+  base: base-content
+type: object
+allOf:
+  - $ref: base-content
+properties:
+  body:
+    type: string
+    title: Body
+    description: Main article content (HTML)
+    x-cms-type: rich_text
+  cover_image:
+    type: string
+    title: Cover Image
+    x-cms-type: image
+  published_at:
+    type: string
+    title: Published At
+    format: date
+  featured:
+    type: boolean
+    title: Featured
+required:
+  - body

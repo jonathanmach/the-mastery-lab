@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sqlite3
 import uuid
 from pathlib import Path
 from typing import Any
@@ -11,21 +10,27 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 
 from pydantic_cms import CMS, ContentEntry, ContentTypeSchema, LocalObjectStorage, ObjectStorage
-from pydantic_cms.sqlite import (
-    SQLiteContentRepository,
-    SQLiteContentTypeRepository,
-    create_schema,
-)
+from pydantic_cms.fs_repository import FileSystemSchemaRepository
+from pydantic_cms.schema_loader import ResolvedSchema, SchemaLoader
+from pydantic_cms.sqlite import SQLiteContentRepository, create_schema
+import sqlite3
 
 # ---------------------------------------------------------------------------
 # App-level singletons (acceptable for prototype)
 # ---------------------------------------------------------------------------
 
+SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
+SCHEMAS_DIR.mkdir(exist_ok=True)
+
 Path(".storage").mkdir(exist_ok=True)
 conn = sqlite3.connect(".storage/cms.db", check_same_thread=False)
 create_schema(conn)
+
+schema_repo = FileSystemSchemaRepository(SCHEMAS_DIR)
+loader = SchemaLoader(SCHEMAS_DIR)
+
 cms = CMS(
-    content_type_repo=SQLiteContentTypeRepository(conn),
+    content_type_repo=schema_repo,
     content_repo=SQLiteContentRepository(conn),
 )
 storage: ObjectStorage = LocalObjectStorage()
@@ -50,6 +55,13 @@ class EntryPayload(BaseModel):
     data: dict[str, Any]
 
 
+class RawSchemaPayload(BaseModel):
+    schema_: dict[str, Any]
+
+    class Config:
+        populate_by_name = True
+
+
 # ---------------------------------------------------------------------------
 # Object Storage
 # ---------------------------------------------------------------------------
@@ -64,7 +76,67 @@ async def upload_file(file: UploadFile) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Content Types
+# JSON Schema endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/schemas")
+def list_schemas() -> list[dict[str, str]]:
+    """List all schema IDs and titles."""
+    result = []
+    for schema_id in loader.list_ids():
+        try:
+            raw = loader.load_raw(schema_id)
+            result.append({"id": schema_id, "title": raw.get("title", schema_id)})
+        except Exception:
+            pass
+    return result
+
+
+@app.get("/api/schemas/{schema_id}/raw")
+def get_schema_raw(schema_id: str) -> dict:
+    """Return the raw JSON Schema file."""
+    try:
+        return loader.load_raw(schema_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/api/schemas/{schema_id}/resolved")
+def get_schema_resolved(schema_id: str) -> dict:
+    """
+    Return a resolved schema with own_fields and inherited_fields separated.
+    Used by the admin field-builder UI.
+    """
+    try:
+        resolved = loader.resolve(schema_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return {
+        "id": resolved.id,
+        "name": resolved.name,
+        "base": resolved.base,
+        "own_fields": [f.model_dump() for f in resolved.own_fields],
+        "inherited_fields": [f.model_dump() for f in resolved.inherited_fields],
+    }
+
+
+@app.put("/api/schemas/{schema_id}", status_code=200)
+def save_schema_raw(schema_id: str, payload: dict[str, Any]) -> dict:
+    """Write a raw JSON Schema dict to disk."""
+    schema_repo.save_raw(schema_id, payload)
+    return {"id": schema_id, "status": "saved"}
+
+
+@app.delete("/api/schemas/{schema_id}", status_code=204)
+def delete_schema(schema_id: str) -> None:
+    if not schema_repo.delete(schema_id):
+        raise HTTPException(status_code=404, detail=f"Schema '{schema_id}' not found")
+
+
+# ---------------------------------------------------------------------------
+# Content Types (field-builder API — backed by FileSystemSchemaRepository)
 # ---------------------------------------------------------------------------
 
 

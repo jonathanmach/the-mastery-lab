@@ -1,0 +1,18 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: base-content
+title: Base Content
+x-cms:
+  base: null
+type: object
+properties:
+  title:
+    type: string
+    title: Title
+    description: The display title
+  slug:
+    type: string
+    title: Slug
+    description: URL-friendly identifier
+required:
+  - title
+  - slug

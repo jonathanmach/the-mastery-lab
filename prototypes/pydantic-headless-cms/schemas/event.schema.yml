@@ -1,0 +1,23 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: event
+title: Event
+x-cms:
+  base: base-content
+type: object
+properties:
+  title:
+    type: string
+  description:
+    type: string
+    x-cms-type: rich_text
+  start_date:
+    type: string
+    format: date-time
+  location:
+    type: string
+  image:
+    type: string
+    x-cms-type: image
+required:
+  - title
+  - start_date

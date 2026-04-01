@@ -36,6 +36,8 @@ class FieldDefinition(pydantic.BaseModel):
     type: FieldType
     required: bool = True
     item_type: FieldType | None = None
+    label: str | None = None
+    description: str | None = None
 
     @pydantic.model_validator(mode="after")
     def _validate_list_item_type(self) -> FieldDefinition:

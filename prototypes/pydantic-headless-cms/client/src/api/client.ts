@@ -1,7 +1,7 @@
 const BASE = 'http://localhost:8004/api'
 
 // ---------------------------------------------------------------------------
-// Types (mirrors server-side Pydantic models)
+// Types
 // ---------------------------------------------------------------------------
 
 export type FieldType =
@@ -13,18 +13,34 @@ export type FieldType =
   | 'date'
   | 'datetime'
   | 'list'
+  | 'image'
 
 export interface FieldDefinition {
   name: string
   type: FieldType
   required: boolean
   item_type: FieldType | null
+  label: string | null        // from JSON Schema "title"
+  description: string | null  // from JSON Schema "description"
 }
 
+/** Flat ContentTypeSchema — own + inherited fields merged (for Pydantic validation). */
 export interface ContentTypeSchema {
   id: string
   name: string
   fields: FieldDefinition[]
+}
+
+/**
+ * Resolved schema returned by GET /api/schemas/{id}/resolved.
+ * Separates own fields from inherited fields for the field-builder UI.
+ */
+export interface ResolvedSchema {
+  id: string
+  name: string
+  base: string | null
+  own_fields: FieldDefinition[]
+  inherited_fields: FieldDefinition[]  // read-only in the schema editor
 }
 
 export interface ContentEntry {
@@ -51,7 +67,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Content Types
+// JSON Schema endpoints
+// ---------------------------------------------------------------------------
+
+export const listSchemas = () =>
+  request<Array<{ id: string; title: string }>>('/schemas')
+
+export const getSchemaRaw = (id: string) =>
+  request<Record<string, unknown>>(`/schemas/${id}/raw`)
+
+export const getSchemaResolved = (id: string) =>
+  request<ResolvedSchema>(`/schemas/${id}/resolved`)
+
+export const saveSchemaRaw = (id: string, raw: Record<string, unknown>) =>
+  request<{ id: string; status: string }>(`/schemas/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(raw),
+  })
+
+export const deleteSchema = (id: string) =>
+  request<void>(`/schemas/${id}`, { method: 'DELETE' })
+
+// ---------------------------------------------------------------------------
+// Content Types (field-builder API)
 // ---------------------------------------------------------------------------
 
 export const getContentTypes = () =>
