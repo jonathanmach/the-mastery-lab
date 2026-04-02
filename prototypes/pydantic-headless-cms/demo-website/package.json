@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "codegen": "json2ts --input '../schemas/*.schema.json' --output src/types/generated"
   },
   "dependencies": {
     "marked": "^12.0.0",
@@ -15,6 +16,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
+    "json-schema-to-typescript": "^14.0.0",
     "typescript": "~5.4.0",
     "vite": "^5.2.0",
     "vue-tsc": "^2.0.0"
