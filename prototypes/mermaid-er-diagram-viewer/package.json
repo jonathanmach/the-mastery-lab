@@ -1,0 +1,20 @@
+{
+  "name": "mermaid-er-diagram-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "~5.6.2",
+    "vite": "^8.3.4",
+    "vue-tsc": "^2.1.10"
+  }
+}
