@@ -35,6 +35,13 @@ interface DiagramBounds {
   height: number
 }
 
+interface CanvasPadding {
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
+
 interface Diagram {
   entities: Entity[]
   relationships: Relationship[]
@@ -211,6 +218,7 @@ const canvasViewportSize = ref({ width: 0, height: 0 })
 let resizeObserver: ResizeObserver | undefined
 const canvasAnchor = ref<DiagramBounds>()
 const draftSource = ref(initialSource)
+const appliedSource = ref(initialSource)
 const diagram = ref<Diagram>({ entities: [], relationships: [], groups: [] })
 const parseError = ref('')
 const sourceOpen = ref(localStorage.getItem('relate-source-open') !== 'false')
@@ -218,6 +226,7 @@ const zoom = ref(1)
 const drag = ref<DragState>()
 const handMode = ref(false)
 const pan = ref<PanState>()
+const canvasPadding = ref<CanvasPadding>({ left: 360, right: 360, top: 360, bottom: 360 })
 const savedTheme = localStorage.getItem('relate-theme')
 const themeMode = ref<ThemeMode>(
   savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'system',
@@ -234,23 +243,8 @@ const rowHeight = 27
 const nodePadding = 36
 const minimumCanvasWidth = 1820
 const minimumCanvasHeight = 1120
-const canvasMargin = 360
 const minimumZoom = 0.25
 const maximumZoom = 1.5
-const canvasWidth = computed(() =>
-  Math.max(
-    minimumCanvasWidth,
-    ...diagram.value.entities.map((entity) => entity.x + nodeWidth + 60),
-    ...groupFrames.value.map((group) => group.x + group.width + 60),
-  ),
-)
-const canvasHeight = computed(() =>
-  Math.max(
-    minimumCanvasHeight,
-    ...diagram.value.entities.map((entity) => entity.y + nodeHeight(entity) + 60),
-    ...groupFrames.value.map((group) => group.y + group.height + 60),
-  ),
-)
 const editorLineCount = computed(() => draftSource.value.split('\n').length)
 const entityCount = computed(() => diagram.value.entities.length)
 const relationshipCount = computed(() => diagram.value.relationships.length)
@@ -303,32 +297,40 @@ const contentBounds = computed(() => {
 const canvasBounds = computed(() => {
   const current = contentBounds.value
   const anchor = canvasAnchor.value ?? current
+  const left = Math.min(anchor.left, current.left)
+  const top = Math.min(anchor.top, current.top)
   const right = Math.max(anchor.left + anchor.width, current.left + current.width)
   const bottom = Math.max(anchor.top + anchor.height, current.top + current.height)
-  return { left: anchor.left, top: anchor.top, width: right - anchor.left, height: bottom - anchor.top }
+  return { left, top, width: right - left, height: bottom - top }
 })
 const canvasGeometry = computed(() => {
   const bounds = canvasBounds.value
-  const width = (bounds.width + canvasMargin * 2) * zoom.value
-  const height = (bounds.height + canvasMargin * 2) * zoom.value
-  const alignment = canvasAnchor.value ?? bounds
-  const alignedWidth = (alignment.width + canvasMargin * 2) * zoom.value
-  const alignedHeight = (alignment.height + canvasMargin * 2) * zoom.value
-  const offsetX = Math.max(0, (canvasViewportSize.value.width - alignedWidth) / 2)
-    - (alignment.left - canvasMargin) * zoom.value
-  const offsetY = Math.max(0, (canvasViewportSize.value.height - alignedHeight) / 2)
-    - (alignment.top - canvasMargin) * zoom.value
+  const width = bounds.width + canvasPadding.value.left + canvasPadding.value.right
+  const height = bounds.height + canvasPadding.value.top + canvasPadding.value.bottom
+  const offsetX = Math.max(0, (canvasViewportSize.value.width - width * zoom.value) / 2)
+    - (bounds.left - canvasPadding.value.left) * zoom.value
+  const offsetY = Math.max(0, (canvasViewportSize.value.height - height * zoom.value) / 2)
+    - (bounds.top - canvasPadding.value.top) * zoom.value
 
   return {
     offsetX,
     offsetY,
+    width,
+    height,
+    viewBox: `${bounds.left - canvasPadding.value.left} ${bounds.top - canvasPadding.value.top} ${width} ${height}`,
+    relationLayerStyle: {
+      left: `${bounds.left - canvasPadding.value.left}px`,
+      top: `${bounds.top - canvasPadding.value.top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    },
     sizerStyle: {
-      width: `${Math.max(canvasViewportSize.value.width, width)}px`,
-      height: `${Math.max(canvasViewportSize.value.height, height)}px`,
+      width: `${Math.max(canvasViewportSize.value.width, width * zoom.value)}px`,
+      height: `${Math.max(canvasViewportSize.value.height, height * zoom.value)}px`,
     },
     diagramStyle: {
-      width: `${canvasWidth.value}px`,
-      height: `${canvasHeight.value}px`,
+      width: '0px',
+      height: '0px',
       transform: `translate(${offsetX}px, ${offsetY}px) scale(${zoom.value})`,
     },
   }
@@ -392,9 +394,11 @@ function parseDiagram(input: string): Diagram {
   const entities: Entity[] = []
   const relationships: Relationship[] = []
   const groups: EntityGroup[] = []
+  const positions = new Map<string, { x: number; y: number }>()
   const entityNames = new Set<string>()
   const groupNames = new Set<string>()
   const groupedEntityNames = new Set<string>()
+  const positionedEntityNames = new Set<string>()
   let activeEntity: Entity | undefined
 
   for (const [index, rawLine] of lines.entries()) {
@@ -427,6 +431,22 @@ function parseDiagram(input: string): Diagram {
           groupedEntityNames.add(member)
         }
         groups.push({ name: groupName, entityNames: members })
+      } else if (/^%%\s*@relate-position\b/i.test(line)) {
+        if (activeEntity) {
+          throw new Error(`Position directives must appear outside entities (line ${index + 1}).`)
+        }
+        const positionMatch = line.match(
+          /^%%\s*@relate-position\s+([A-Za-z_][\w-]*)\s*:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/i,
+        )
+        if (!positionMatch) {
+          throw new Error(`Use "%% @relate-position entity: x, y" on line ${index + 1}.`)
+        }
+        const [, name, x, y] = positionMatch
+        if (positionedEntityNames.has(name)) {
+          throw new Error(`Entity "${name}" has more than one position directive.`)
+        }
+        positionedEntityNames.add(name)
+        positions.set(name, { x: Number(x), y: Number(y) })
       }
       continue
     }
@@ -502,7 +522,19 @@ function parseDiagram(input: string): Diagram {
     }
   }
 
-  return { entities: layoutEntities(entities, groups), relationships, groups }
+  for (const name of positions.keys()) {
+    if (!entityNames.has(name)) {
+      throw new Error(`Position directive refers to undeclared entity "${name}".`)
+    }
+  }
+
+  const layout = layoutEntities(entities, groups)
+  for (const entity of layout) {
+    const position = positions.get(entity.name)
+    if (position) Object.assign(entity, position)
+  }
+
+  return { entities: layout, relationships, groups }
 }
 
 function applyDiagram() {
@@ -510,6 +542,7 @@ function applyDiagram() {
   try {
     const parsed = parseDiagram(draftSource.value)
     canvasAnchor.value = undefined
+    appliedSource.value = draftSource.value
     diagram.value = parsed
   } catch (error) {
     parseError.value = error instanceof Error ? error.message : 'The diagram could not be parsed.'
@@ -581,22 +614,47 @@ function startEntityDrag(event: PointerEvent, entities: Entity[]) {
   ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
 }
 
-function moveDrag(event: PointerEvent) {
+function persistPositions() {
+  const positionLines = diagram.value.entities.map(({ name, x, y }) => {
+    const format = (coordinate: number) => String(Math.round(coordinate * 10) / 10)
+    return `    %% @relate-position ${name}: ${format(x)}, ${format(y)}`
+  })
+  const lines = draftSource.value
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*%%\s*@relate-position\b/i.test(line))
+  const headerIndex = lines.findIndex((line) => line.trim() === 'erDiagram')
+
+  if (headerIndex === -1) return
+  lines.splice(headerIndex + 1, 0, ...positionLines)
+  draftSource.value = lines.join('\n')
+}
+
+async function moveDrag(event: PointerEvent) {
   if (!drag.value) return
+  const viewport = canvasScroll.value
+  const previousOffsetX = canvasGeometry.value.offsetX
+  const previousOffsetY = canvasGeometry.value.offsetY
+  const previousScrollLeft = viewport?.scrollLeft ?? 0
+  const previousScrollTop = viewport?.scrollTop ?? 0
   const deltaX = (event.clientX - drag.value.pointerX) / zoom.value
   const deltaY = (event.clientY - drag.value.pointerY) / zoom.value
-  const minX = Math.min(...drag.value.positions.map(({ x }) => x))
-  const minY = Math.min(...drag.value.positions.map(({ y }) => y))
-  const safeDeltaX = Math.max(-minX, deltaX)
-  const safeDeltaY = Math.max(-minY, deltaY)
 
   for (const position of drag.value.positions) {
-    position.entity.x = position.x + safeDeltaX
-    position.entity.y = position.y + safeDeltaY
+    position.entity.x = position.x + deltaX
+    position.entity.y = position.y + deltaY
+  }
+
+  if (viewport) {
+    const offsetDeltaX = canvasGeometry.value.offsetX - previousOffsetX
+    const offsetDeltaY = canvasGeometry.value.offsetY - previousOffsetY
+    await nextTick()
+    viewport.scrollLeft = previousScrollLeft + offsetDeltaX
+    viewport.scrollTop = previousScrollTop + offsetDeltaY
   }
 }
 
 function stopDrag() {
+  if (drag.value) persistPositions()
   drag.value = undefined
 }
 
@@ -619,8 +677,41 @@ function startCanvasPan(event: PointerEvent) {
 
 function moveCanvasPan(event: PointerEvent) {
   if (!pan.value || !canvasScroll.value) return
-  canvasScroll.value.scrollLeft = pan.value.scrollLeft - (event.clientX - pan.value.pointerX)
-  canvasScroll.value.scrollTop = pan.value.scrollTop - (event.clientY - pan.value.pointerY)
+  void panCanvasTo(
+    pan.value.scrollLeft - (event.clientX - pan.value.pointerX),
+    pan.value.scrollTop - (event.clientY - pan.value.pointerY),
+  )
+}
+
+async function panCanvasTo(left: number, top: number) {
+  const viewport = canvasScroll.value
+  if (!viewport) return
+
+  const oldOffsetX = canvasGeometry.value.offsetX
+  const oldOffsetY = canvasGeometry.value.offsetY
+  const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth
+  const maxScrollTop = viewport.scrollHeight - viewport.clientHeight
+  let expanded = false
+
+  if (left < 0) {
+    canvasPadding.value.left += (-left + viewport.clientWidth) / zoom.value
+    expanded = true
+  } else if (left > maxScrollLeft) {
+    canvasPadding.value.right += (left - maxScrollLeft + viewport.clientWidth) / zoom.value
+    expanded = true
+  }
+  if (top < 0) {
+    canvasPadding.value.top += (-top + viewport.clientHeight) / zoom.value
+    expanded = true
+  } else if (top > maxScrollTop) {
+    canvasPadding.value.bottom += (top - maxScrollTop + viewport.clientHeight) / zoom.value
+    expanded = true
+  }
+
+  if (expanded) await nextTick()
+
+  viewport.scrollLeft = Math.max(0, left + canvasGeometry.value.offsetX - oldOffsetX)
+  viewport.scrollTop = Math.max(0, top + canvasGeometry.value.offsetY - oldOffsetY)
 }
 
 function stopCanvasPan() {
@@ -629,17 +720,19 @@ function stopCanvasPan() {
 
 function resetLayout() {
   canvasAnchor.value = undefined
-  diagram.value.entities = layoutEntities(
-    diagram.value.entities.map(({ name, columns }) => ({ name, columns, x: 0, y: 0 })),
-    diagram.value.groups,
-  )
+  canvasPadding.value = { left: 360, right: 360, top: 360, bottom: 360 }
+  draftSource.value = draftSource.value
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*%%\s*@relate-position\b/i.test(line))
+    .join('\n')
+  applyDiagram()
 }
 
 function zoomBy(amount: number) {
   zoom.value = Math.min(maximumZoom, Math.max(minimumZoom, Number((zoom.value + amount).toFixed(2))))
 }
 
-function handleCanvasWheel(event: WheelEvent) {
+async function handleCanvasWheel(event: WheelEvent) {
   if (!canvasScroll.value) return
   const viewport = canvasScroll.value
   const deltaScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE
@@ -670,8 +763,10 @@ function handleCanvasWheel(event: WheelEvent) {
     return
   }
 
-  viewport.scrollLeft += event.deltaX * deltaScale
-  viewport.scrollTop += event.deltaY * deltaScale
+  await panCanvasTo(
+    viewport.scrollLeft + event.deltaX * deltaScale,
+    viewport.scrollTop + event.deltaY * deltaScale,
+  )
 }
 
 function onKeyDown(event: KeyboardEvent) {
@@ -680,6 +775,36 @@ function onKeyDown(event: KeyboardEvent) {
     applyDiagram()
   }
 }
+
+function withoutPositionDirectives(source: string) {
+  return source
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*%%\s*@relate-position\b/i.test(line))
+    .join('\n')
+}
+
+watch(draftSource, async (source) => {
+  if (withoutPositionDirectives(source) !== withoutPositionDirectives(appliedSource.value)) return
+
+  try {
+    const parsed = parseDiagram(source)
+    const viewport = canvasScroll.value
+    const oldOffsetX = canvasGeometry.value.offsetX
+    const oldOffsetY = canvasGeometry.value.offsetY
+    const oldScrollLeft = viewport?.scrollLeft ?? 0
+    const oldScrollTop = viewport?.scrollTop ?? 0
+    canvasAnchor.value = undefined
+    diagram.value = parsed
+    parseError.value = ''
+    if (viewport) {
+      await nextTick()
+      viewport.scrollLeft = oldScrollLeft + canvasGeometry.value.offsetX - oldOffsetX
+      viewport.scrollTop = oldScrollTop + canvasGeometry.value.offsetY - oldOffsetY
+    }
+  } catch (error) {
+    parseError.value = error instanceof Error ? error.message : 'The position directives could not be parsed.'
+  }
+})
 
 watch(
   activeTheme,
@@ -710,10 +835,17 @@ onMounted(() => {
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (!entry) return
+      const previousOffsetX = canvasGeometry.value.offsetX
+      const previousOffsetY = canvasGeometry.value.offsetY
       canvasViewportSize.value = {
         width: entry.contentRect.width,
         height: entry.contentRect.height,
       }
+      void nextTick(() => {
+        if (!canvasScroll.value) return
+        canvasScroll.value.scrollLeft += canvasGeometry.value.offsetX - previousOffsetX
+        canvasScroll.value.scrollTop += canvasGeometry.value.offsetY - previousOffsetY
+      })
     })
     observer.observe(canvasScroll.value)
     resizeObserver = observer
@@ -844,7 +976,12 @@ applyDiagram()
               class="diagram-canvas"
               :style="canvasGeometry.diagramStyle"
               >
-              <svg class="relations-layer" :viewBox="`0 0 ${canvasWidth} ${canvasHeight}`" aria-hidden="true">
+              <svg
+                class="relations-layer"
+                :viewBox="canvasGeometry.viewBox"
+                :style="canvasGeometry.relationLayerStyle"
+                aria-hidden="true"
+              >
                 <defs>
                   <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="#a8b0bd" />
@@ -912,7 +1049,8 @@ applyDiagram()
               </article>
               <svg
                 class="relation-labels-layer"
-                :viewBox="`0 0 ${canvasWidth} ${canvasHeight}`"
+                :viewBox="canvasGeometry.viewBox"
+                :style="canvasGeometry.relationLayerStyle"
                 aria-hidden="true"
               >
                 <g v-for="{ relation, path, key } in renderedRelationships" :key="key">
