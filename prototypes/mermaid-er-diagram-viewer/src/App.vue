@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import initialSource from './diagrams/sample.mmd?raw'
 
 interface Column {
   type: string
@@ -65,153 +66,6 @@ interface PanState {
 type ThemeMode = 'system' | 'light' | 'dark'
 type ResolvedTheme = Exclude<ThemeMode, 'system'>
 
-const initialSource = `erDiagram
-    %% @relate-group Projects & workflow: project, workflow_state, tag
-    %% @relate-group Tasks & collaboration: task, task_relation, task_tag, comment, agent_run
-    %% @relate-group Conversations: chat, chat_message
-    %% @relate-group Terminal sessions: tmux_session
-
-    agent_run {
-        integer id PK
-        integer task_id FK
-        RunnerKind runner
-        string model "nullable"
-        string effort "nullable"
-        RunKind kind
-        RunMode mode
-        WorkspaceMode workspace_mode
-        RunStatus status
-        string temporal_workflow_id "nullable"
-        string temporal_run_id "nullable"
-        string worktree_path "nullable"
-        string branch_name "nullable"
-        string base_branch "nullable"
-        text prompt
-        text instruction "nullable"
-        text result_summary "nullable"
-        text diff "nullable"
-        integer exit_code "nullable"
-        text error "nullable"
-        boolean has_log
-        integer input_tokens "nullable"
-        integer output_tokens "nullable"
-        float cost_usd "nullable"
-        datetime created_at
-        datetime started_at "nullable"
-        datetime finished_at "nullable"
-        datetime merged_at "nullable"
-        string pr_url "nullable"
-    }
-    chat {
-        integer id PK
-        string title
-        RunnerKind runner
-        string runner_session_id "nullable"
-        integer project_id FK "nullable"
-        integer task_id FK "nullable"
-        datetime archived_at "nullable"
-        datetime created_at
-        datetime updated_at
-    }
-    chat_message {
-        integer id PK
-        integer chat_id FK
-        ChatRole role
-        text body_md
-        integer input_tokens "nullable"
-        integer output_tokens "nullable"
-        float cost_usd "nullable"
-        text error "nullable"
-        datetime created_at
-    }
-    comment {
-        integer id PK
-        integer task_id FK
-        AuthorKind author_kind
-        text body_md
-        datetime created_at
-    }
-    project {
-        integer id PK
-        string title
-        text description_md
-        boolean is_favorite
-        float sort_order
-        string repo_path "nullable"
-        integer agent_success_status_id FK "nullable"
-        datetime created_at
-        datetime updated_at
-    }
-    tag {
-        integer id PK
-        string name
-        string color
-        text description_md
-        text inject_context "nullable"
-        datetime created_at
-        datetime updated_at
-    }
-    task {
-        integer id PK
-        integer project_id FK
-        string title
-        text description_md
-        text plan_md "nullable"
-        integer status_id FK
-        Priority priority
-        RunMode run_mode
-        datetime created_at
-        datetime updated_at
-        datetime started_at "nullable"
-        datetime completed_at "nullable"
-    }
-    task_relation {
-        integer task_id PK, FK
-        integer related_id PK, FK
-        datetime created_at
-    }
-    task_tag {
-        integer task_id PK, FK
-        integer tag_id PK, FK
-    }
-    tmux_session {
-        integer id PK
-        integer project_id FK "nullable"
-        integer task_id FK "nullable"
-        string name
-        string label
-        string cwd_host
-        RunnerKind runner "nullable"
-        text initial_command "nullable"
-        TmuxSessionStatus status
-        datetime created_at
-        datetime last_attached_at "nullable"
-        datetime terminated_at "nullable"
-    }
-    workflow_state {
-        integer id PK
-        integer project_id FK
-        string name
-        StatusCategory category
-        string color
-        integer position
-    }
-
-    task ||--o{ agent_run : "task_id (CASCADE)"
-    project o|--o{ chat : "project_id (CASCADE)"
-    task o|--o{ chat : "task_id (CASCADE)"
-    chat ||--o{ chat_message : "chat_id (CASCADE)"
-    task ||--o{ comment : "task_id (CASCADE)"
-    workflow_state o|--o{ project : "agent_success_status_id (SET NULL)"
-    project ||--o{ task : "project_id (CASCADE)"
-    workflow_state ||--o{ task : "status_id"
-    task ||--o{ task_relation : "task_id (CASCADE)"
-    task ||--o{ task_relation : "related_id (CASCADE)"
-    task ||--o{ task_tag : "task_id (CASCADE)"
-    tag ||--o{ task_tag : "tag_id (CASCADE)"
-    project o|--o{ tmux_session : "project_id (CASCADE)"
-    task o|--o{ tmux_session : "task_id (CASCADE)"
-    project ||--o{ workflow_state : "project_id (CASCADE)"`
 
 const canvasScroll = ref<HTMLElement>()
 const canvasViewportSize = ref({ width: 0, height: 0 })
@@ -225,6 +79,7 @@ const sourceOpen = ref(localStorage.getItem('relate-source-open') !== 'false')
 const zoom = ref(1)
 const drag = ref<DragState>()
 const handMode = ref(false)
+const keysOnly = ref(localStorage.getItem('relate-keys-only') === 'true')
 const pan = ref<PanState>()
 const canvasPadding = ref<CanvasPadding>({ left: 360, right: 360, top: 360, bottom: 360 })
 const savedTheme = localStorage.getItem('relate-theme')
@@ -549,8 +404,12 @@ function applyDiagram() {
   }
 }
 
+function visibleColumns(entity: Entity) {
+  return keysOnly.value ? entity.columns.filter((column) => column.key) : entity.columns
+}
+
 function nodeHeight(entity: Entity) {
-  return headerHeight + Math.max(entity.columns.length, 1) * rowHeight + nodePadding
+  return headerHeight + Math.max(visibleColumns(entity).length, 1) * rowHeight + nodePadding
 }
 
 function getEntity(name: string) {
@@ -614,19 +473,32 @@ function startEntityDrag(event: PointerEvent, entities: Entity[]) {
   ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
 }
 
-function persistPositions() {
-  const positionLines = diagram.value.entities.map(({ name, x, y }) => {
-    const format = (coordinate: number) => String(Math.round(coordinate * 10) / 10)
-    return `    %% @relate-position ${name}: ${format(x)}, ${format(y)}`
-  })
-  const lines = draftSource.value
-    .split(/\r?\n/)
-    .filter((line) => !/^\s*%%\s*@relate-position\b/i.test(line))
-  const headerIndex = lines.findIndex((line) => line.trim() === 'erDiagram')
+const positionDirective = /^\s*%%\s*@relate-position\b/i
+const groupDirective = /^\s*%%\s*@relate-group\b/i
 
-  if (headerIndex === -1) return
-  lines.splice(headerIndex + 1, 0, ...positionLines)
-  draftSource.value = lines.join('\n')
+// Moves the viewer directives to the bottom of the source, groups first, then the given position lines.
+function withDirectivesAtBottom(source: string, positionLines: string[]) {
+  const lines = source.split(/\r?\n/)
+  const groupLines = lines.filter((line) => groupDirective.test(line))
+  const body = lines.filter((line) => !positionDirective.test(line) && !groupDirective.test(line))
+  while (body.length > 0 && body[body.length - 1].trim() === '') body.pop()
+  const directives = [...groupLines, ...positionLines]
+  return directives.length > 0 ? [...body, '', ...directives].join('\n') : body.join('\n')
+}
+
+// Only entities that differ from the automatic layout get a position directive.
+function persistPositions() {
+  const { entities, groups } = diagram.value
+  const defaults = new Map(layoutEntities(entities, groups).map(({ name, x, y }) => [name, { x, y }]))
+  const round = (coordinate: number) => Math.round(coordinate * 10) / 10
+  const positionLines = entities.flatMap(({ name, x, y }) => {
+    const fallback = defaults.get(name)
+    if (fallback && round(fallback.x) === round(x) && round(fallback.y) === round(y)) return []
+    return [`    %% @relate-position ${name}: ${round(x)}, ${round(y)}`]
+  })
+
+  if (!/^\s*erDiagram\s*$/m.test(draftSource.value)) return
+  draftSource.value = withDirectivesAtBottom(draftSource.value, positionLines)
 }
 
 async function moveDrag(event: PointerEvent) {
@@ -721,15 +593,37 @@ function stopCanvasPan() {
 function resetLayout() {
   canvasAnchor.value = undefined
   canvasPadding.value = { left: 360, right: 360, top: 360, bottom: 360 }
-  draftSource.value = draftSource.value
-    .split(/\r?\n/)
-    .filter((line) => !/^\s*%%\s*@relate-position\b/i.test(line))
-    .join('\n')
+  draftSource.value = withoutPositionDirectives(draftSource.value)
   applyDiagram()
 }
 
 function zoomBy(amount: number) {
   zoom.value = Math.min(maximumZoom, Math.max(minimumZoom, Number((zoom.value + amount).toFixed(2))))
+}
+
+const pendingZoom = { factor: 1, pointerX: 0, pointerY: 0, frame: 0, applying: false }
+
+async function flushPendingZoom() {
+  pendingZoom.frame = 0
+  const viewport = canvasScroll.value
+  if (!viewport || pendingZoom.applying) return
+  pendingZoom.applying = true
+
+  const { factor, pointerX, pointerY } = pendingZoom
+  pendingZoom.factor = 1
+  const previousZoom = zoom.value
+  const nextZoom = Number(Math.min(maximumZoom, Math.max(minimumZoom, previousZoom * factor)).toFixed(3))
+  if (nextZoom !== previousZoom) {
+    const anchorX = (viewport.scrollLeft + pointerX - canvasGeometry.value.offsetX) / previousZoom
+    const anchorY = (viewport.scrollTop + pointerY - canvasGeometry.value.offsetY) / previousZoom
+    zoom.value = nextZoom
+    await nextTick()
+    viewport.scrollLeft = anchorX * nextZoom + canvasGeometry.value.offsetX - pointerX
+    viewport.scrollTop = anchorY * nextZoom + canvasGeometry.value.offsetY - pointerY
+  }
+
+  pendingZoom.applying = false
+  if (pendingZoom.factor !== 1 && !pendingZoom.frame) pendingZoom.frame = requestAnimationFrame(flushPendingZoom)
 }
 
 async function handleCanvasWheel(event: WheelEvent) {
@@ -744,22 +638,13 @@ async function handleCanvasWheel(event: WheelEvent) {
   event.preventDefault()
 
   if (event.ctrlKey || event.metaKey) {
+    // Pinch gestures fire several wheel events per frame. Accumulate them and apply once per frame so each
+    // anchor is computed from a fully rendered state instead of stale scroll/geometry.
     const viewportRect = viewport.getBoundingClientRect()
-    const pointerX = event.clientX - viewportRect.left
-    const pointerY = event.clientY - viewportRect.top
-    const previousZoom = zoom.value
-    const anchorX = (viewport.scrollLeft + pointerX - canvasGeometry.value.offsetX) / previousZoom
-    const anchorY = (viewport.scrollTop + pointerY - canvasGeometry.value.offsetY) / previousZoom
-    const nextZoom = Math.min(
-      maximumZoom,
-      Math.max(minimumZoom, previousZoom * Math.exp((-event.deltaY * deltaScale) * 0.005)),
-    )
-
-    zoom.value = Number(nextZoom.toFixed(3))
-    void nextTick(() => {
-      viewport.scrollLeft = anchorX * zoom.value + canvasGeometry.value.offsetX - pointerX
-      viewport.scrollTop = anchorY * zoom.value + canvasGeometry.value.offsetY - pointerY
-    })
+    pendingZoom.pointerX = event.clientX - viewportRect.left
+    pendingZoom.pointerY = event.clientY - viewportRect.top
+    pendingZoom.factor *= Math.exp(-event.deltaY * deltaScale * 0.005)
+    if (!pendingZoom.frame) pendingZoom.frame = requestAnimationFrame(flushPendingZoom)
     return
   }
 
@@ -777,10 +662,7 @@ function onKeyDown(event: KeyboardEvent) {
 }
 
 function withoutPositionDirectives(source: string) {
-  return source
-    .split(/\r?\n/)
-    .filter((line) => !/^\s*%%\s*@relate-position\b/i.test(line))
-    .join('\n')
+  return withDirectivesAtBottom(source, [])
 }
 
 watch(draftSource, async (source) => {
@@ -817,6 +699,17 @@ watch(
 
 watch(themeMode, (theme) => {
   localStorage.setItem('relate-theme', theme)
+})
+
+watch(keysOnly, async (value) => {
+  localStorage.setItem('relate-keys-only', String(value))
+  try {
+    // Card heights changed, so re-run the automatic layout; saved position directives still apply.
+    diagram.value = parseDiagram(appliedSource.value)
+    canvasAnchor.value = undefined
+  } catch {
+    // The applied source already parsed once, so keep the current diagram if it somehow fails.
+  }
 })
 
 watch(sourceOpen, (open) => {
@@ -929,6 +822,16 @@ applyDiagram()
                 <path d="M6.5 10V5.25a1.25 1.25 0 0 1 2.5 0V9m0-.75V4a1.25 1.25 0 0 1 2.5 0v4.75m0-.5V5.5a1.25 1.25 0 0 1 2.5 0v6.75l.45-.9a1.4 1.4 0 0 1 2.55 1.15l-1.2 3.1A3.8 3.8 0 0 1 12.25 18h-2.1a4 4 0 0 1-3.1-1.48L4.3 13.1a1.65 1.65 0 0 1 2.2-2.43L8 12" />
               </svg>
             </button>
+            <button
+              class="source-toggle"
+              :class="{ active: keysOnly }"
+              :aria-pressed="keysOnly"
+              :title="keysOnly ? 'Show all fields' : 'Show only PK / FK fields'"
+              @click="keysOnly = !keysOnly"
+            >
+              <svg viewBox="0 0 20 20" fill="none"><circle cx="6.5" cy="12.5" r="3.5" /><path d="m9 10 7-7m-3 3 2 2m-4 0 1.5 1.5" /></svg>
+              <span>Keys only</span>
+            </button>
             <button class="icon-button" title="Zoom out" aria-label="Zoom out" @click="zoomBy(-0.1)">
               <svg viewBox="0 0 20 20" fill="none"><circle cx="8.75" cy="8.75" r="5.75" /><path d="m13 13 4 4M6 8.75h5.5" /></svg>
             </button>
@@ -1036,14 +939,14 @@ applyDiagram()
                   </button>
                 </header>
                 <div class="entity-columns">
-                  <div v-for="column in entity.columns" :key="column.name" class="column-row">
+                  <div v-for="column in visibleColumns(entity)" :key="column.name" class="column-row">
                     <span class="column-type">{{ column.type }}</span>
                     <span class="column-name">{{ column.name }}</span>
                     <span v-if="column.key" class="column-key" :class="{ 'key-primary': column.key.includes('PK') }">{{ column.key }}</span>
                     <span v-else-if="column.note" class="column-key nullable">NULL</span>
                     <span v-if="column.note && column.key" class="column-note">{{ column.note }}</span>
                   </div>
-                  <div v-if="entity.columns.length === 0" class="empty-entity">No attributes</div>
+                  <div v-if="visibleColumns(entity).length === 0" class="empty-entity">{{ keysOnly ? 'No keys' : 'No attributes' }}</div>
                 </div>
                 <footer class="entity-footer"><span>{{ entity.columns.length }} fields</span><span class="entity-footer-dot">·</span><span>Entity</span></footer>
               </article>
